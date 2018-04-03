@@ -20,6 +20,7 @@ public class SemanticStats {
     private  HashMap<Pair,Integer> textTitleMapper = new HashMap<>();
     private  HashMap<String,Integer> tagTFCounter = new HashMap<>();
     private  HashMap<String,Integer> tagDFCounter = new HashMap<>();
+    private  HashMap<Pair,Integer> textdfnMapper = new HashMap<>();
 
     private SemanticStats(){
         try {
@@ -65,6 +66,18 @@ public class SemanticStats {
         return tagDFCounter.get(tag);
     }
 
+    public synchronized Pair putTextWithDfn(String dfn,String text){
+        dfn=getNormalizedText(dfn);
+        text=getNormalizedText(text);
+        Pair<String,String> p = Pair.of(dfn,text);
+        if(!textdfnMapper.keySet().contains(p)) {
+            textdfnMapper.put(p, 1);
+        }else{
+            textdfnMapper.put(p,textdfnMapper.get(p)+1);
+        }
+        return p;
+    }
+
     public synchronized Pair putTextWithTitle(String title,String text){
         title=getNormalizedText(title);
         text=getNormalizedText(text);
@@ -99,23 +112,29 @@ public class SemanticStats {
 
             builder.append("DocTypes"+System.lineSeparator());
             for(Entry<String,Integer> entry: docTypeCounter.entrySet()){
-                builder.append(entry.getKey()+": "+entry.getValue()+System.lineSeparator());
+                builder.append(entry.getKey()+"\t"+entry.getValue()+System.lineSeparator());
             }
 
             builder.append("Tag TF Amounts"+System.lineSeparator());
             for(Entry<String,Integer> entry: tagTFCounter.entrySet()){
-                builder.append(entry.getKey()+": "+entry.getValue()+System.lineSeparator());
+                builder.append(entry.getKey()+"\t"+entry.getValue()+System.lineSeparator());
             }
 
             builder.append("Tag DF Amounts"+System.lineSeparator());
             for(Entry<String,Integer> entry: tagDFCounter.entrySet()){
-                builder.append(entry.getKey()+": "+entry.getValue()+System.lineSeparator());
+                builder.append(entry.getKey()+"\t"+entry.getValue()+System.lineSeparator());
+            }
+
+            builder.append("Dfn-Definition Pairs"+System.lineSeparator());
+            for(Entry<Pair,Integer> entry: textdfnMapper.entrySet()){
+                Pair<String,String> p = entry.getKey();
+                builder.append(p.getLeft()+"\t"+p.getRight()+"\t"+entry.getValue()+ System.lineSeparator());
             }
 
             builder.append("Title-Text Pairs"+System.lineSeparator());
             for(Entry<Pair,Integer> entry: textTitleMapper.entrySet()){
                 Pair<String,String> p = entry.getKey();
-                builder.append(p.getLeft()+": "+p.getRight()+": count("+entry.getValue()+")"+ System.lineSeparator());
+                builder.append(p.getLeft()+"\t"+p.getRight()+"\t"+entry.getValue()+ System.lineSeparator());
             }
             writer.write(builder.toString());
             writer.close();

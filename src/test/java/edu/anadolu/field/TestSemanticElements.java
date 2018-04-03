@@ -13,6 +13,7 @@ import org.jsoup.select.Elements;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
@@ -24,7 +25,7 @@ public class TestSemanticElements {
 
     final String doctypeHTML5 ="<!DOCTYPE html>\n";
 
-    final String doctypeHTML401Transitional ="<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n";
+    final String doctypeHTML401Transitional ="<!DOCTYPE HTML PUBLIC \"-//w3c//dtd html 4.0 transitional//en\" \"http://www.w3.org/TR/html4/loose.dtd\">\n";
 
     final String doctypeHTML401Frameset ="<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Frameset//EN\" \"http://www.w3.org/TR/html4/frameset.dtd\">\n";
 
@@ -114,7 +115,7 @@ public class TestSemanticElements {
     @Test
     public void testDocType() {
         String type = "";
-        Document jDoc = Jsoup.parse(doctypeXHTMLMathMLSVGDTD);
+        Document jDoc = Jsoup.parse(doctypeHTML401Transitional);
         Node typeNode = jDoc.childNode(0);
         String name = typeNode.attr("name");
         String publicId = typeNode.attr("publicId");
@@ -133,7 +134,7 @@ public class TestSemanticElements {
             return;
         }
         for (String token : tokens) {
-            if (token.startsWith("DTD")){
+            if (token.toUpperCase().startsWith("DTD")){
                 type=token;
                 break;
             }
@@ -269,11 +270,19 @@ public class TestSemanticElements {
     @Test
     public void testNormalize() throws Exception {
         Analyzer analyzer = MetaTag.whitespaceAnalyzer();
-        TokenStream stream = analyzer.tokenStream(null, "Abc CDE  \t  Ads23. www dd-22-sD");
-        stream.reset();
-        while (stream.incrementToken()) {
-            System.out.println(stream.getAttribute(CharTermAttribute.class).toString());
+        TokenStream stream = analyzer.tokenStream(null, "ASDasd\tSDSDasd TRTR!");
+        StringBuilder builder = new StringBuilder();
+        try {
+            stream.reset();
+            while (stream.incrementToken()) {
+                builder.append(stream.getAttribute(CharTermAttribute.class).toString()+" ");
+            }
+            stream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+
+        System.out.println(builder.toString().trim());
     }
     @Test
     public void testTreeSet(){

@@ -79,16 +79,16 @@ public class SemanticElements {
         boolean isFind=false;
         for(SemanticTag tag:selectedTags){
             if(tag.getTag().compareTo(SemanticTag.HTMLTag.dfn)!=0) continue;
-            String title=tag.findAttr("title").getRight();
-            if(title.length() < 3) continue;
-            String text=tag.getText().replaceAll("\\s+","_");
+            String definition=tag.findAttr("parentText").getRight();
+            String text=tag.getText().replaceAll("\\s+", "_");
+            if(text.length() < 3) continue;
             dfns.append(text).append(' ');
             if(!isFind) {
                 semanticStats.incTagDF("dfn");
                 isFind=true;
             }
             semanticStats.incTagTF("dfn");
-            semanticStats.putTextWithTitle(title,text);
+            semanticStats.putTextWithDfn(text, definition);
         }
         return dfns.toString().trim();
     }
@@ -187,11 +187,14 @@ public class SemanticElements {
         }
 
         for (String token : tokens) {
-            if (token.startsWith("DTD")){
+            if (token.toUpperCase().startsWith("DTD")){
                 type=token;
                 return type;
             }
         }
+        String err = name+"\t"+publicId+"\t"+systemId;
+        if(err.trim().length()!=0)
+            System.err.println(err);
         return "not detected";
     }
 
@@ -226,6 +229,9 @@ public class SemanticElements {
                 SemanticTag st = new SemanticTag(tag,e.text());
                 for (Attribute attr:e.attributes()){
                     st.addAttr(Pair.of(attr.getKey(),attr.getValue()));
+                }
+                if(tag.compareTo(SemanticTag.HTMLTag.dfn)==0){
+                    st.addAttr(Pair.of("parentText", e.parent().text()));
                 }
                 semanticTags.add(st);
             }
