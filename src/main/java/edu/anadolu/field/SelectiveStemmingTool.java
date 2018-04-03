@@ -52,6 +52,9 @@ public class SelectiveStemmingTool extends CmdLineTool {
     @Option(name = "-KTT", required = false, usage = "Kendall Tau correlation threshold [-1...1]")
     protected double ktt = 0.99;
 
+    @Option(name = "-binDF", required = false, usage = "Number of bins for DF. Default: 1000 ")
+    protected int binDF = 1000;
+
     protected String baseline;
 
     @Option(name = "-spam", metaVar = "[10|15|...|85|90]", required = false, usage = "Non-negative integer spam threshold")
@@ -81,6 +84,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
         }
 
         SelectionMethods.KendallTauThreshold=ktt;
+        SelectionMethods.TermTFDF.NumberOfBIN=binDF;
 
         DataSet dataSet = CollectionFactory.dataset(collection, tfd_home);
 
@@ -147,6 +151,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
 
             }
 
+            System.out.print(String.format("%s\t",model)); //print part1
             Solution solution = selectiveStemmingSolution(model,evaluatorMap,querySelectorMap,needs,tagsArr);
             if (tTest.pairedTTest(baselines.get(model), solution.scores(), 0.05))
                 list.add(new ModelScore("SelectiveStemming" + "*", solution.getMean()));
@@ -250,11 +255,12 @@ public class SelectiveStemmingTool extends CmdLineTool {
                    // System.out.println(tag + " " + need.id() + " " + score);
                 }
             }
-
-            predictedTag = SelectionMethods.getPredictedTag(selection,tagTermStatsMap,tagsArr);
+            System.out.print(String.format("%s\t%s\t",need.id(),need.query())); //print part2
+            predictedTag = SelectionMethods.getPredictedTag(selection,tagTermStatsMap,tagsArr); ///print part3 will done inside
             double predictedScore = evaluatorMap.get(predictedTag).score(need, model);
             Prediction prediction = new Prediction(need, predictedTag, predictedScore);
             list.add(prediction);
+            System.out.println(String.format("%s\t%lf\t%s\t", predictedTag, predictedScore, selection)); //print part4
 
         }
         Solution solution = new Solution(list, -1);
