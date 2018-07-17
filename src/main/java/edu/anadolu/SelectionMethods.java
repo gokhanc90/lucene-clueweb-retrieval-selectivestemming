@@ -124,10 +124,10 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
 
         if (listTermTag1.get(0).getIndexID() != listTermTag2.get(0).getIndexID()){
-            System.out.print(String.format("%s\t","Changed")); //print part1
+            System.err.print(String.format("%s\t","Changed")); //print part1
             return tagsArr[0]; //Nostem
         }
-        System.out.print(String.format("%s\t","NotChanged")); //print part1
+        System.err.print(String.format("%s\t","NotChanged")); //print part1
         return tagsArr[1];
     }
 
@@ -153,10 +153,10 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
 
         if (listTermTag1.get(0).getIndexID() != listTermTag2.get(0).getIndexID()) {
-            System.out.print(String.format("%s\t","Changed")); //print part1
+            System.err.print(String.format("%s\t","Changed")); //print part1
             return tagsArr[0]; //Nostem
         }
-        System.out.print(String.format("%s\t","NotChanged")); //print part1
+        System.err.print(String.format("%s\t","NotChanged")); //print part1
         return tagsArr[1];
     }
 
@@ -182,17 +182,17 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
 
         if(listTermTag1.size() == 1){
-            System.out.print(String.format("%s\t","NotChanged One-Term"));
+            System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[0]; //One-term Stem
         }
         else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
-                System.out.print(String.format("%s\tKendalVal: %lf\t","NotChanged",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
             else{
-                System.out.print(String.format("%s\tKendalVal: %lf\t","Changed",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
         }
@@ -221,17 +221,17 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
 
         if(listTermTag1.size() == 1){
-            System.out.print(String.format("%s\t","NotChanged One-Term"));
+            System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[0]; //One-term Stem
         }
         else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
-                System.out.print(String.format("%s\tKendalVal: %lf\t","NotChanged",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
             else{
-                System.out.print(String.format("%s\tKendalVal: %lf\t","Changed",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
         }
@@ -267,11 +267,11 @@ public class SelectionMethods {
             }
         }
         if(orderChanged){
-            System.out.print(String.format("%s\t","Changed"));
+            System.err.print(String.format("%s\t","Changed"));
             return tagsArr[0]; //NoStem
         }
         else{
-            System.out.print(String.format("%s\t","NotChanged"));
+            System.err.print(String.format("%s\t","NotChanged"));
             return tagsArr[1];
         }
     }
@@ -304,11 +304,11 @@ public class SelectionMethods {
             }
         }
         if(orderChanged){
-            System.out.print(String.format("%s\t","Changed"));
+            System.err.print(String.format("%s\t","Changed"));
             return tagsArr[0]; //NoStem
         }
         else{
-            System.out.print(String.format("%s\t","NotChanged"));
+            System.err.print(String.format("%s\t","NotChanged"));
             return tagsArr[1];
         }
     }
@@ -335,17 +335,17 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Long.compare(t1.getDF(), t2.getDF()));
 
         if(listTermTag1.size() == 1){
-            System.out.print(String.format("%s\t","NotChanged One-Term"));
+            System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[0]; //One-term Stem
         }
         else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
-                System.out.print(String.format("%s\tKendalVal: %lf\t","NotChanged",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
             else{
-                System.out.print(String.format("%s\tKendalVal: %lf\t","Changed",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
         }
@@ -374,17 +374,17 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Long.compare(t1.getTF(), t2.getTF()));
 
         if(listTermTag1.size() == 1){
-            System.out.print(String.format("%s\t","NotChanged One-Term"));
+            System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[1]; //One-term KStem
         }
         else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
-                System.out.print(String.format("%s\tKendalVal: %lf\t","NotChanged",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var Deigisim yok KStem
             }
             else{
-                System.out.print(String.format("%s\tKendalVal: %lf\t","Changed",val));
+                System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
         }
@@ -419,11 +419,11 @@ public class SelectionMethods {
             }
         }
         if(orderChanged){
-            System.out.print(String.format("%s\t","Changed")); //print part1
+            System.err.print(String.format("%s\t","Changed")); //print part1
             return tagsArr[0]; //NoStem
         }
         else{
-            System.out.print(String.format("%s\t","NotChanged")); //print part1
+            System.err.print(String.format("%s\t","NotChanged")); //print part1
             return tagsArr[1];
         }
     }
@@ -457,11 +457,11 @@ public class SelectionMethods {
             }
         }
         if(orderChanged){
-            System.out.print(String.format("%s\t","Changed"));
+            System.err.print(String.format("%s\t","Changed"));
             return tagsArr[0]; //NoStem
         }
         else{
-            System.out.print(String.format("%s\t","NotChanged"));
+            System.err.print(String.format("%s\t","NotChanged"));
             return tagsArr[1];
         }
 
@@ -492,10 +492,10 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Long.compare(t2.getDF(), t1.getDF()));
 
         if (listTermTag1.get(0).getIndexID() != listTermTag2.get(0).getIndexID()) {
-            System.out.print(String.format("%s\t","Changed")); //print part1
+            System.err.print(String.format("%s\t","Changed")); //print part1
             return tagsArr[0]; //Nostem
         }
-        System.out.print(String.format("%s\t","NotChanged")); //print part1
+        System.err.print(String.format("%s\t","NotChanged")); //print part1
         return tagsArr[1];
 
     }
@@ -522,10 +522,10 @@ public class SelectionMethods {
         listTermTag2.sort((t1, t2) -> Long.compare(t1.getDF(), t2.getDF()));
 
         if (listTermTag1.get(0).getIndexID() != listTermTag2.get(0).getIndexID()) {
-            System.out.print(String.format("%s\t","Changed"));
+            System.err.print(String.format("%s\t","Changed"));
             return tagsArr[0]; //NoStem
         }
-        System.out.print(String.format("%s\t","NotChanged"));
+        System.err.print(String.format("%s\t","NotChanged"));
         return tagsArr[1];
 
     }
@@ -569,11 +569,11 @@ public class SelectionMethods {
 //        listTermTag2.stream().forEach(t -> System.out.println(t.indexID + " " + t.getTF()));
 
         if (listTermTag1.get(0).getIndexID() != listTermTag2.get(0).getIndexID()) {
-            System.out.print(String.format("%s\t","Changed")); //print part1
+            System.err.print(String.format("%s\t","Changed")); //print part1
             return tagsArr[0]; //Nostem
 
         }
-        System.out.print(String.format("%s\t","NotChanged")); //print part1
+        System.err.print(String.format("%s\t","NotChanged")); //print part1
         return tagsArr[1];
 
     }

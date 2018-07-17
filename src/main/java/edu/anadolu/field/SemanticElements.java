@@ -142,7 +142,7 @@ public class SemanticElements {
                 isFind=true;
             }
             semanticStats.incTagTF("acronym");
-            semanticStats.putTextWithTitle(title, text);
+            semanticStats.putTextWithTitleAcronym(title, text);
         }
         return acronyms.toString().trim();
     }
@@ -162,7 +162,7 @@ public class SemanticElements {
                 isFind=true;
             }
             semanticStats.incTagTF("abbr");
-            semanticStats.putTextWithTitle(title, text);
+            semanticStats.putTextWithTitleAbbr(title, text);
         }
         return abbrs.toString().trim();
 

@@ -7,8 +7,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 
 public class SemanticStats {
@@ -17,7 +20,8 @@ public class SemanticStats {
     private Analyzer analyzer;
 
     private  HashMap<String,Integer> docTypeCounter = new HashMap<>();
-    private  HashMap<Pair,Integer> textTitleMapper = new HashMap<>();
+    private  HashMap<Pair,Integer> textTitleMapperAcronym = new HashMap<>();
+    private  HashMap<Pair,Integer> textTitleMapperAbbr = new HashMap<>();
     private  HashMap<String,Integer> tagTFCounter = new HashMap<>();
     private  HashMap<String,Integer> tagDFCounter = new HashMap<>();
     private  HashMap<Pair,Integer> textdfnMapper = new HashMap<>();
@@ -78,14 +82,26 @@ public class SemanticStats {
         return p;
     }
 
-    public synchronized Pair putTextWithTitle(String title,String text){
+    public synchronized Pair putTextWithTitleAcronym(String title,String text){
         title=getNormalizedText(title);
         text=getNormalizedText(text);
         Pair<String,String> p = Pair.of(title,text);
-        if(!textTitleMapper.keySet().contains(p)) {
-            textTitleMapper.put(p, 1);
+        if(!textTitleMapperAcronym.keySet().contains(p)) {
+            textTitleMapperAcronym.put(p, 1);
         }else{
-            textTitleMapper.put(p,textTitleMapper.get(p)+1);
+            textTitleMapperAcronym.put(p,textTitleMapperAcronym.get(p)+1);
+        }
+        return p;
+    }
+
+    public synchronized Pair putTextWithTitleAbbr(String title,String text){
+        title=getNormalizedText(title);
+        text=getNormalizedText(text);
+        Pair<String,String> p = Pair.of(title,text);
+        if(!textTitleMapperAbbr.keySet().contains(p)) {
+            textTitleMapperAbbr.put(p, 1);
+        }else{
+            textTitleMapperAbbr.put(p,textTitleMapperAbbr.get(p)+1);
         }
         return p;
     }
@@ -110,32 +126,34 @@ public class SemanticStats {
             FileWriter writer = new FileWriter("SemanticStats.txt");
             StringBuilder builder = new StringBuilder();
 
-            builder.append("DocTypes"+System.lineSeparator());
-            for(Entry<String,Integer> entry: docTypeCounter.entrySet()){
-                builder.append(entry.getKey()+"\t"+entry.getValue()+System.lineSeparator());
-            }
+            builder.append("DocTypes" + System.lineSeparator());
+            docTypeCounter.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).limit(50).
+                    forEach(entry -> builder.append(entry.getKey() + "\t" + entry.getValue() + System.lineSeparator()));
 
-            builder.append("Tag TF Amounts"+System.lineSeparator());
-            for(Entry<String,Integer> entry: tagTFCounter.entrySet()){
-                builder.append(entry.getKey()+"\t"+entry.getValue()+System.lineSeparator());
-            }
 
-            builder.append("Tag DF Amounts"+System.lineSeparator());
-            for(Entry<String,Integer> entry: tagDFCounter.entrySet()){
-                builder.append(entry.getKey()+"\t"+entry.getValue()+System.lineSeparator());
-            }
+            builder.append("Tag TF Amounts" + System.lineSeparator());
+            tagTFCounter.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).
+                    forEach(entry -> builder.append(entry.getKey() + "\t" + entry.getValue() + System.lineSeparator()));
 
-            builder.append("Dfn-Definition Pairs"+System.lineSeparator());
-            for(Entry<Pair,Integer> entry: textdfnMapper.entrySet()){
-                Pair<String,String> p = entry.getKey();
-                builder.append(p.getLeft()+"\t"+p.getRight()+"\t"+entry.getValue()+ System.lineSeparator());
-            }
+            builder.append("Tag DF Amounts" + System.lineSeparator());
+            tagDFCounter.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).
+                    forEach(entry -> builder.append(entry.getKey() + "\t" + entry.getValue() + System.lineSeparator()));
 
-            builder.append("Title-Text Pairs"+System.lineSeparator());
-            for(Entry<Pair,Integer> entry: textTitleMapper.entrySet()){
-                Pair<String,String> p = entry.getKey();
-                builder.append(p.getLeft()+"\t"+p.getRight()+"\t"+entry.getValue()+ System.lineSeparator());
-            }
+
+            builder.append("Dfn-Definition Pairs" + System.lineSeparator());
+            textdfnMapper.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).limit(1000).
+                    forEach(entry -> builder.append(entry.getKey().getLeft() + "\t" + entry.getKey().getRight() + "\t" + entry.getValue() + System.lineSeparator()));
+
+            builder.append("Title-Text Acronym Pairs" + System.lineSeparator());
+            textTitleMapperAcronym.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).limit(1000).
+                    forEach(entry -> builder.append(entry.getKey().getLeft() + "\t" + entry.getKey().getRight() + "\t" + entry.getValue() + System.lineSeparator()));
+
+
+            builder.append("Title-Text Abbr Pairs" + System.lineSeparator());
+            textTitleMapperAbbr.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).limit(1000).
+                    forEach(entry -> builder.append(entry.getKey().getLeft() + "\t" + entry.getKey().getRight() + "\t" + entry.getValue() + System.lineSeparator()));
+
+
             writer.write(builder.toString());
             writer.close();
         } catch (IOException e) {

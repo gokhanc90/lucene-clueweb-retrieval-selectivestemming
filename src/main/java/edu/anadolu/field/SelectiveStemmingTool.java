@@ -151,7 +151,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
 
             }
 
-            System.out.print(String.format("%s\t",model)); //print part1
+            System.err.println(String.format("%s\t",model)); //print part1
             Solution solution = selectiveStemmingSolution(model,evaluatorMap,querySelectorMap,needs,tagsArr);
             if (tTest.pairedTTest(baselines.get(model), solution.scores(), 0.05))
                 list.add(new ModelScore("SelectiveStemming" + "*", solution.getMean()));
@@ -255,12 +255,12 @@ public class SelectiveStemmingTool extends CmdLineTool {
                    // System.out.println(tag + " " + need.id() + " " + score);
                 }
             }
-            System.out.print(String.format("%s\t%s\t",need.id(),need.query())); //print part2
+            System.err.print(String.format("%s\t%s\t",need.id(),need.query())); //print part2
             predictedTag = SelectionMethods.getPredictedTag(selection,tagTermStatsMap,tagsArr); ///print part3 will done inside
             double predictedScore = evaluatorMap.get(predictedTag).score(need, model);
             Prediction prediction = new Prediction(need, predictedTag, predictedScore);
             list.add(prediction);
-            System.out.println(String.format("%s\t%lf\t%s\t", predictedTag, predictedScore, selection)); //print part4
+            System.err.println(String.format("%s\t%f\t%s\t", predictedTag, predictedScore, selection)); //print part4
 
         }
         Solution solution = new Solution(list, -1);
