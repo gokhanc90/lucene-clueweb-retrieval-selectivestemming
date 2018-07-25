@@ -121,9 +121,17 @@ public class SelectiveStemmingTool extends CmdLineTool {
         for (String model : modelIntersection) {
 
             double[] baseline = new double[needs.size()];
-
+            double bestTagScore=Double.NEGATIVE_INFINITY;
+            String bestTag="";
+            //Finds the best tag to construct baseline
+            for(String tag:tagsArr){
+                if (evaluatorMap.get(tag).averagePerModel(model).score>bestTagScore) {
+                    bestTagScore = evaluatorMap.get(tag).averagePerModel(model).score;
+                    bestTag = tag;
+                }
+            }
             for (int i = 0; i < needs.size(); i++)
-                baseline[i] = evaluatorMap.get(this.baseline).score(needs.get(i), model);
+                baseline[i] = evaluatorMap.get(bestTag).score(needs.get(i), model);
 
             baselines.put(model, baseline);
         }
@@ -134,21 +142,9 @@ public class SelectiveStemmingTool extends CmdLineTool {
             List<ModelScore> list = new ArrayList<>();
 
             for (String tag : tagsArr) {
-
-                double[] scores = new double[needs.size()];
-
                 final Evaluator evaluator = evaluatorMap.get(tag);
-
-                for (int i = 0; i < needs.size(); i++)
-                    scores[i] = evaluator.score(needs.get(i), model);
-
                 ModelScore modelScore = evaluator.averagePerModel(model);
-
-                if (tTest.pairedTTest(baselines.get(model), scores, 0.05))
-                    list.add(new ModelScore(tag + "*", modelScore.score));
-                else
-                    list.add(new ModelScore(tag, modelScore.score));
-
+                list.add(new ModelScore(tag, modelScore.score));
             }
 
             System.err.println(String.format("%s\t",model)); //print part1
@@ -160,10 +156,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
 
             Collections.sort(list);
 
-            if (needs.size() < 100)
-                System.out.print(model + "(" + needs.size() + ") \t");
-            else
-                System.out.print(model + "(" + needs.size() + ")\t");
+            System.out.print(model + "(" + needs.size() + ")\t");
 
             for (ModelScore modelScore : list)
                 System.out.print(modelScore.model + "(" + String.format("%.5f", modelScore.score) + ")\t");
@@ -228,7 +221,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
         List<Prediction> list = new ArrayList<>(needs.size());
 
         for (InfoNeed need : needs) {
-            String predictedTag = null;
+            String predictedTag;
             Map<String,ArrayList<TermStats>> tagTermStatsMap = new LinkedHashMap<>();
             for (String tag : tagsArr) {
                 QuerySelector selector = querySelectorMap.get(tag);
@@ -239,7 +232,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
                 for (String term : Analyzers.getAnalyzedTokens(query, analyzer)) {
                     TermStats termStats = statsMap.get(term);
                     if (termStats == null) {
-                        System.out.println(tag+" index does not contain the term: "+ term);
+                        //System.out.println(tag+" index does not contain the term: "+ term);
                         termStats = new TermStats(term,0,0,0);//indexes do not contain query term
                         //throw new RuntimeException("Term stats cannot be null: "+ term );
                     }
