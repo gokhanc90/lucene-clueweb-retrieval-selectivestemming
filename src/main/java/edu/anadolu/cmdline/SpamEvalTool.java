@@ -9,11 +9,15 @@ import edu.anadolu.knn.Measure;
 import org.kohsuke.args4j.Option;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * List average effectiveness of models at different spam threshold cut-offs
  */
 public final class SpamEvalTool extends EvaluatorTool {
+
+    @Option(name = "-i", required = false, usage = "increments of spam threshold", metaVar = "5 10 20")
+    private int i = 5;
 
 
     @Option(name = "-task", required = false, usage = "task to be executed")
@@ -40,7 +44,7 @@ public final class SpamEvalTool extends EvaluatorTool {
      *
      * @param map
      */
-    private void display(SortedMap<Integer, List<ModelScore>> map) {
+    static void display(SortedMap<Integer, List<ModelScore>> map) {
 
         List<String> models = new ArrayList<>();
 
@@ -73,11 +77,25 @@ public final class SpamEvalTool extends EvaluatorTool {
         System.out.println();
         models.forEach(System.out::println);
 
-        for (String model : scores.keySet()) {
-            String s = String.format("%s \t %.2f", Evaluator.prettyModel(model), Presentation.var4(scores.get(model).stream().mapToDouble(d -> d).toArray()));
+        List<ModelScore> list = scores.keySet().stream().map(s -> new ModelScore(s, Presentation.var4(scores.get(s).stream().mapToDouble(d -> d).toArray()))).sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+        print(list);
+
+
+        print(scores.keySet()
+                .stream()
+                .map(s -> new ModelScore(s, Presentation.coefficientOfVariation(scores.get(s).stream().mapToDouble(d -> d).toArray())))
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList())
+        );
+
+    }
+
+    static private void print(List<ModelScore> list) {
+        System.out.println("=========================");
+        for (ModelScore m : list) {
+            String s = String.format("%s \t %.2f", Evaluator.prettyModel(m.model), m.score);
             System.out.println(s);
         }
-
     }
 
     @Override
@@ -112,7 +130,7 @@ public final class SpamEvalTool extends EvaluatorTool {
         map.put(0, evaluator.averageForAllModels());
         System.out.println("=======================");
 
-        for (int spamThreshold = 5; spamThreshold <= 95; spamThreshold += 5) {
+        for (int spamThreshold = i; spamThreshold < 100; spamThreshold += i) {
 
             evaluator = new Evaluator(dataset, tag, measure, models, "spam_" + spamThreshold + "_evals", op);
 

@@ -4,6 +4,7 @@ import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
+import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
@@ -56,7 +57,6 @@ final class OptimizeTool extends CmdLineTool {
         final long start = System.nanoTime();
         System.out.println("Opening Lucene index directory '" + indexPath.toAbsolutePath() + "'...");
 
-        final Directory dir = FSDirectory.open(indexPath);
 
         final IndexWriterConfig iwc = new IndexWriterConfig();
 
@@ -65,12 +65,19 @@ final class OptimizeTool extends CmdLineTool {
         iwc.setUseCompoundFile(false);
         iwc.setMergeScheduler(new ConcurrentMergeScheduler());
 
-        try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        try (final Directory dir = FSDirectory.open(indexPath);
+             IndexWriter writer = new IndexWriter(dir, iwc)) {
             // This can be a terribly costly operation, so generally it's only worth it when your index is static.
             writer.forceMerge(1);
-        }
 
-        dir.close();
+            if (writer.maxDoc() == writer.numDocs())
+                System.out.println("Number of documents: " + writer.numDocs());
+            else
+                System.out.println("numDocs: " + writer.maxDoc() + " maxDocs = " + writer.numDocs());
+
+        } catch (IndexNotFoundException e) {
+            System.out.println("IndexNotFound in " + indexPath.toAbsolutePath());
+        }
 
         System.out.println("Optimization completed in " + execution(start));
     }

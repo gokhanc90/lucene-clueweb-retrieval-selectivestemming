@@ -10,7 +10,6 @@ import edu.anadolu.similarities.MetaTerm;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
-import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -57,13 +56,7 @@ import static org.apache.solr.common.params.CommonParams.OMIT_HEADER;
 /**
  * Indexer for ClueWeb{09|12} plus GOV2
  */
-public final class Indexer {
-
-    private final int[] radix = {0, 0, 0};
-
-    public int[] radix() {
-        return this.radix;
-    }
+public class Indexer {
 
     /**
      * artificial field and token: every document should have this
@@ -101,7 +94,6 @@ public final class Indexer {
             super(inputWarcFile.getFileName().toString());
             this.writer = writer;
             this.inputWarcFile = inputWarcFile;
-
         }
 
         private int index(String id, String contents) throws IOException {
@@ -179,31 +171,42 @@ public final class Indexer {
 
                 writer.addDocument(document);
 
-                String tags = document.get("tags");
-                if (tags == null) return 1;
-
-                String docId = document.get("id");
-                int j = dataset.judge(docId);
-
-                if (j == -5)
-                    radix[2]++;
-                else if (j > 0)
-                    radix[1]++;
-                else
-                    radix[0]++;
-
                 return 1;
             }
 
             String id = warcRecord.id();
 
+            if (skip(id)) return 0;
+
             org.jsoup.nodes.Document jDoc;
+//
+//            final ExecutorService service = Executors.newSingleThreadExecutor();
+//
+//            try {
+//                final Future<org.jsoup.nodes.Document> f = service.submit(() -> {
+//                    return Jsoup.parse(warcRecord.content());
+//                });
+//
+//                jDoc = f.get(30, TimeUnit.SECONDS);
+//
+//            } catch (final TimeoutException e) {
+//                System.err.println("Calculation took to long " + id);
+//                return 1;
+//            } catch (final Exception e) {
+//                System.err.println(id);
+//                // System.out.println(warcRecord.content());
+//                return 1;
+//            } finally {
+//                service.shutdown();
+//            }
+
             try {
                 jDoc = Jsoup.parse(warcRecord.content());
+            } catch (java.lang.OutOfMemoryError oom) {
+                System.err.println("jdoc oom " + id);
+                return 1;
             } catch (Exception exception) {
-                // exception.printStackTrace();
-                System.err.println(id);
-                // System.out.println(warcRecord.content());
+                System.err.println("jdoc exception " + id);
                 return 1;
             }
 
@@ -286,10 +289,13 @@ public final class Indexer {
         public void run() {
             try {
 
+                Thread.currentThread().setName(inputWarcFile.getFileName().toString());
+                setName(inputWarcFile.getFileName().toString());
+
                 if (Collection.CW09A.equals(collection) || Collection.CW09B.equals(collection)) {
                     int addCount = indexClueWeb09WarcFile();
                     //System.out.println("*./" + inputWarcFile.getParent().getFileName().toString() + File.separator + inputWarcFile.getFileName().toString() + "  " + addCount);
-                } else if (Collection.CW12B.equals(collection)) {
+                } else if (Collection.CW12A.equals(collection) || Collection.CW12B.equals(collection)) {
                     int addCount = indexClueWeb12WarcFile();
                     //System.out.println("./" + inputWarcFile.getParent().getFileName().toString() + File.separator + inputWarcFile.getFileName().toString() + "\t" + addCount);
                 } else if (Collection.GOV2.equals(collection)) {
@@ -304,7 +310,17 @@ public final class Indexer {
         }
     }
 
-    private final Path indexPath;
+    /**
+     * Skip certain documents that hang Jsoup.parse method
+     *
+     * @param docId document identifier
+     * @return true if the document should be skipped
+     */
+    protected boolean skip(String docId) {
+        return "clueweb12-1100wb-15-21381".equals(docId) || "clueweb12-1013wb-14-21356".equals(docId);
+    }
+
+    protected Path indexPath;
     private final Path docsPath;
 
     private final IndexerConfig config;
@@ -395,7 +411,7 @@ public final class Indexer {
      * @param wDoc ClueWeb09WarcRecord
      * @return Lucene Document having different fields (keywords, body, title, description)
      */
-    private Document warc2LuceneDocument(WarcRecord wDoc) {
+    protected Document warc2LuceneDocument(WarcRecord wDoc) {
 
         org.jsoup.nodes.Document jDoc;
         try {
@@ -493,7 +509,7 @@ public final class Indexer {
     }
 
 
-    static Deque<Path> discoverWarcFiles(Path p, final String suffix) {
+    public static Deque<Path> discoverWarcFiles(Path p, final String suffix) {
 
         final Deque<Path> stack = new ArrayDeque<>();
 
@@ -540,7 +556,7 @@ public final class Indexer {
             analyzerPerField.put("host", MetaTag.whitespaceAnalyzer());
             return new PerFieldAnalyzerWrapper(Analyzers.analyzer(tag), analyzerPerField);
         } else if (config.semantic) {
-            return  MetaTag.whitespaceAnalyzer();
+            return MetaTag.whitespaceAnalyzer();
         } else
             return Analyzers.analyzer(tag);
     }
@@ -628,9 +644,9 @@ public final class Indexer {
             writer.commit();
         } finally {
             writer.close();
+            dir.close();
         }
 
-        dir.close();
         return numIndexed;
     }
 
@@ -672,9 +688,9 @@ public final class Indexer {
             writer.commit();
         } finally {
             writer.close();
+            dir.close();
         }
 
-        dir.close();
         return numIndexed;
     }
 

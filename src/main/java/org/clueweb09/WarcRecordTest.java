@@ -20,7 +20,7 @@ public class WarcRecordTest {
 
     public static void main(String[] args) throws IOException {
 
-     //   gov2();
+        //   gov2();
         cw12();
         //cw09();
     }
@@ -79,7 +79,7 @@ public class WarcRecordTest {
 
     public static void cw12() throws IOException {
 
-        Path inputWarcFile = Paths.get("/Users/iorixxx/0013wb-88.warc.gz");
+        Path inputWarcFile = Paths.get("/Users/iorixxx/1100wb-15.warc.gz");
 
         int i = 0;
 
@@ -95,20 +95,25 @@ public class WarcRecordTest {
                     i++;
                     String id = wDoc.getDocid();
 
+                    if ("clueweb12-1100wb-15-21381".equals(id) || "clueweb12-1013wb-14-21356".equals(id)) continue;
 
                     String url = wDoc.getURL();
 
+                    String c = wDoc.getContent();
 
-                    String title = Jsoup.parse(wDoc.getContent()).title();
-                    System.out.println(wDoc.getHeaderString());
-                    System.out.println(wDoc.getWARCType());
-                    System.out.println(id + " " + url + " " + title);
-                    System.out.println("--------");
+                    System.out.println(id + " " + url + " " + c.length());
+
+
+                    try {
+                        Jsoup.parse(c);
+                    } catch (Exception e) {
+
+                    }
 
                 }
 
             }
-
+            //clueweb12-1100wb-15-21376 http://csr.bu.edu/colortracking/data/test-sequences/sequence15.mv
         }
 
         System.out.println(i + " many record found.");

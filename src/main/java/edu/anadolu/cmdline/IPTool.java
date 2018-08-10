@@ -93,7 +93,7 @@ class IPTool extends CmdLineTool {
 
     private String tfd_home;
 
-    private final static Measure[] measures = {NDCG20, NDCG100, ERR20, ERR100, MAP};
+    private final static Measure[] measures = {NDCG20, NDCG100, MAP};
 
     private Path excelFile(FullFactorial.EXP test, FullFactorial.EXP train, Measure optimize, Measure report) {
 
@@ -330,9 +330,9 @@ class IPTool extends CmdLineTool {
         System.out.println(" \\\\");
 
 
-        for (String tag : new String[]{"KStemAnalyzerAnchor", "KStemAnalyzer"}) {
+        for (String tag : new String[]{"KStemAnchor", "KStem"}) {
 
-            String anchor = "KStemAnalyzerAnchor".equals(tag) ? "Anchor" : "NoAnchor";
+            String anchor = "KStemAnchor".equals(tag) ? "Anchor" : "NoAnchor";
 
             System.out.println("\\multirow{2}{*}{" + anchor + "}");
 

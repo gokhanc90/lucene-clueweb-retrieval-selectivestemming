@@ -44,8 +44,12 @@ public class YTool extends XTool {
     private int msK = 7;
 
     public void appendLatexTables(String text) throws IOException {
-        Path path = Paths.get(tfd_home).resolve("excels").resolve("tables.tex");
-        Files.write(path, text.getBytes(StandardCharsets.US_ASCII), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        Path path = Paths.get(tfd_home).resolve("excels");
+
+        if (!Files.exists(path))
+            Files.createDirectories(path);
+
+        Files.write(path.resolve("tables.tex"), text.getBytes(StandardCharsets.US_ASCII), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 
     @Override
@@ -61,13 +65,15 @@ public class YTool extends XTool {
         if (!Files.exists(excelPath))
             Files.createDirectories(excelPath);
 
-        StringBuilder file = new StringBuilder("Y");
+        StringBuilder file = new StringBuilder();
+
+        file.append(Integer.toString(spam)).append("_Y");
         for (int i = 0; i < collections.length; i++) {
             file.append(collections[i].toString());
             if (i < collections.length - 1)
                 file.append("_");
         }
-        return excelPath.resolve(file.toString() + tag + optimize.toString() + op.toUpperCase(Locale.ENGLISH) + ".xlsx");
+        return excelPath.resolve(file.toString() + tag + optimize.toString() + op.toUpperCase(Locale.ENGLISH) + "_" + numBins + ".xlsx");
     }
 
     private Map<String, Set<TFDAwareNeed>> decorate(Map<String, List<InfoNeed>> map, Map<DataSet, Decorator> decorators) {
@@ -89,7 +95,7 @@ public class YTool extends XTool {
         return decorated;
     }
 
-    private List<TFDAwareNeed> residualTFDAwareNeeds(List<InfoNeed> needs, Map<DataSet, Decorator> decorators) throws IOException {
+    private List<TFDAwareNeed> residualTFDAwareNeeds(List<InfoNeed> needs, Map<DataSet, Decorator> decorators) {
 
         List<TFDAwareNeed> tfdAwareNeeds = new ArrayList<>(needs.size());
 
@@ -121,7 +127,7 @@ public class YTool extends XTool {
         for (int i = 0; i < collections.length; i++) {
             dataSets[i] = CollectionFactory.dataset(collections[i], tfd_home);
             evalDirs[i] = evalDirectory(dataSets[i], optimize);
-            decorators.put(dataSets[i], new Decorator(dataSets[i], tag, freq));
+            decorators.put(dataSets[i], new Decorator(dataSets[i], tag, freq, numBins));
         }
 
         System.out.println(Arrays.toString(dataSets));
@@ -190,32 +196,38 @@ public class YTool extends XTool {
 
         Map<String, Double> geoRiskMap = addGeoRisk2Sheet(RxT);
 
+        System.out.println(geoRiskMap.keySet());
+
         accuracyList.sort(Comparator.comparing(o -> o.key));
 
         accuracyList.forEach(this::writeSolution2SummarySheet);
 
         writeSolution2SummarySheet(oracleMax);
         writeSolution2SummarySheet(RND);
-        writeSolution2SummarySheet(RMLE);
+        writeSolution2SummarySheet(MLE);
 
 
         accuracyList.add(oracleMax);
         accuracyList.add(RND);
-        accuracyList.add(RMLE);
+        accuracyList.add(MLE);
         accuracyList.add(SEL);
         if (MS != null)
             accuracyList.add(MS);
 
         accuracyList.forEach(solution -> {
-            solution.geoRisk = geoRiskMap.get(solution.key);
+
+            if (geoRiskMap.containsKey(solution.key))
+                solution.geoRisk = geoRiskMap.get(solution.key);
+            else
+                System.out.println(solution.key + " does not exists in geoRiskMap " + geoRiskMap.keySet());
         });
 
 
         appendLatexTables(latex(accuracyList));
         dumpRankInfo();
 
-        RMLE.predict = Predict.DIV;
-        // solutionList.add(RMLE);
+        MLE.predict = Predict.DIV;
+        // solutionList.add(MLE);
         // solutionList.add(SGL);
         persistSolutionsLists();
     }
@@ -226,7 +238,9 @@ public class YTool extends XTool {
         if (MSExcelPath == null) return null;
         Workbook workbook = WorkbookFactory.create(MSExcelFile().toFile(), null, true);
 
-        Sheet RxT = workbook.getSheet("RxTxNDCG100");
+        Sheet RxT = workbook.getSheet("RxTx" + optimize.toString());
+
+        if (RxT == null) RxT = workbook.getSheet("RxTxNDCG100");
 
         Iterator<Row> iterator = RxT.rowIterator();
 
@@ -291,7 +305,7 @@ public class YTool extends XTool {
         if (!Files.exists(excelPath))
             Files.createDirectories(excelPath);
 
-        return excelPath.resolve("MS" + collections[0] + optimize.toString() + tag + op.toUpperCase(Locale.ENGLISH) + ".xlsx");
+        return excelPath.resolve(spam + "_MS" + collections[0] + optimize.toString() + tag + op.toUpperCase(Locale.ENGLISH) + ".xlsx");
     }
 
 
@@ -305,9 +319,9 @@ public class YTool extends XTool {
         } else
             dataset = Arrays.toString(collections);
 
-        String anchor = "KStemAnalyzerAnchor".equals(tag) ? "Anchor" : "NoAnchor";
+        String anchor = "KStemAnchor".equals(tag) ? "Anchor" : "NoAnchor";
 
-        String tableName = dataset + optimize.toString() + anchor;
+        String tableName = dataset + optimize.toString() + anchor + "spam" + spam + "bin" + numBins;
 
         String header = header();
         return String.format(header, prettyDataSet(dataset), anchor, residualNeedsSize, optimize.toString(), tableName, optimize.toString());

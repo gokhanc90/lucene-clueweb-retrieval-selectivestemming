@@ -33,9 +33,6 @@ import static org.apache.solr.common.params.CommonParams.OMIT_HEADER;
  */
 public final class SpamTool extends CmdLineTool {
 
-    @Option(name = "-tag", metaVar = "[KStem|KStemAnchor]", required = false, usage = "Index Tag")
-    private String tag = "KStem";
-
     @Option(name = "-collection", required = true, usage = "Collection")
     private edu.anadolu.datasets.Collection collection;
 
@@ -47,6 +44,18 @@ public final class SpamTool extends CmdLineTool {
     @Override
     public String getHelp() {
         return "Following properties must be defined in config.properties for " + CLI.CMD + " " + getName() + " paths.spam paths.docs files.ids files.spam";
+    }
+
+    static HttpSolrClient getSpamSolr(Collection collection) {
+
+        if (Collection.CW09A.equals(collection) || Collection.CW09B.equals(collection) || Collection.MQ09.equals(collection) || Collection.MQE1.equals(collection)) {
+            return new HttpSolrClient.Builder().withBaseSolrUrl("http://irra-micro.nas.ceng.local:8983/solr/spam09A").build();
+        } else if (Collection.CW12A.equals(collection) || Collection.CW12B.equals(collection))
+            return new HttpSolrClient.Builder().withBaseSolrUrl("http://irra-micro.nas.ceng.local:8983/solr/spam12A").build();
+        else {
+            System.out.println("spam filtering is only applicable to ClueWeb09 and ClueWeb12 collections!");
+            return null;
+        }
     }
 
     @Override
@@ -68,15 +77,8 @@ public final class SpamTool extends CmdLineTool {
             return;
         }
 
-        final HttpSolrClient solr;
-        if (Collection.CW09A.equals(collection) || Collection.CW09B.equals(collection) || Collection.MQ09.equals(collection) || Collection.MQE1.equals(collection)) {
-            solr = new HttpSolrClient.Builder().withBaseSolrUrl("http://irra-micro.nas.ceng.local:8983/solr/spam09A").build();
-        } else if (Collection.CW12B.equals(collection))
-            solr = new HttpSolrClient.Builder().withBaseSolrUrl("http://irra-micro.nas.ceng.local:8983/solr/spam12A").build();
-        else {
-            System.out.println("spam filtering is only applicable to ClueWeb09 and ClueWeb12 collections!");
-            return;
-        }
+        final HttpSolrClient solr = getSpamSolr(collection);
+        if (solr == null) return;
 
         List<Path> pathList = Evaluator.discoverTextFiles(dataset.collectionPath().resolve("base_spam_runs"), ".txt");
 
@@ -211,9 +213,9 @@ public final class SpamTool extends CmdLineTool {
 
 
     /**
-     * Filter documents from a TREC submission file
+     * Retrieve spam score of a given document id
      */
-    private static int percentile(HttpSolrClient solr, String docID) throws IOException, SolrServerException {
+    public static int percentile(HttpSolrClient solr, String docID) throws IOException, SolrServerException {
 
         SolrQuery query = new SolrQuery(docID).setFields("percentile");
         query.set(HEADER_ECHO_PARAMS, CommonParams.EchoParamStyle.NONE.toString());

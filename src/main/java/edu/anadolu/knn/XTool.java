@@ -34,12 +34,14 @@ import java.util.*;
 import static edu.anadolu.cmdline.LatexTool.prettyDataSet;
 import static edu.anadolu.eval.Evaluator.prettyModel;
 import static edu.anadolu.knn.CartesianQueryTermSimilarity.array;
-import static edu.anadolu.knn.Predict.*;
+import static edu.anadolu.knn.Predict.DIV;
 
 /**
  * k-NN without k
  */
 public class XTool extends CmdLineTool {
+
+    protected static final String BEST = "C_E_m_Ch";
 
     @Option(name = "-tag", metaVar = "[KStem|KStemAnchor]", required = false, usage = "Index Tag")
     protected String tag = "KStemAnchor";
@@ -59,8 +61,15 @@ public class XTool extends CmdLineTool {
     @Option(name = "-freq", required = false, usage = "Frequency implementation")
     protected Freq freq = Freq.Rel;
 
+    @Option(name = "-numBins", required = false, usage = "number of bins")
+    protected int numBins = 1000;
+
     @Option(name = "-var", required = false, usage = "filter training queries by variance threshold", metaVar = "0 1 2")
     protected int var = 0;
+
+    @Option(name = "-spam", required = false, usage = "manuel spam threshold", metaVar = "10 20 30 .. 90")
+    protected int spam = -1;
+
 
     @Override
     public String getShortDescription() {
@@ -91,7 +100,7 @@ public class XTool extends CmdLineTool {
 
     //  Solution oracleMin = null;
     Solution oracleMax = null;
-    Solution RMLE = null;
+    Solution MLE = null;
     Solution RND = null;
 
     Solution SEL = null;
@@ -117,8 +126,8 @@ public class XTool extends CmdLineTool {
             RND = evaluator.randomAsSolution(residualNeeds);
             System.arraycopy(RND.scores, 0, rndAcc, 0, residualNeeds.size());
 
-            RMLE = evaluator.randomMLE(residualNeeds, randomMLEMap);
-            System.arraycopy(RMLE.scores, 0, accumulator, 0, residualNeeds.size());
+            MLE = evaluator.randomMLE(residualNeeds, randomMLEMap);
+            System.arraycopy(MLE.scores, 0, accumulator, 0, residualNeeds.size());
 
         } else {
 
@@ -154,7 +163,7 @@ public class XTool extends CmdLineTool {
             for (int i = 0; i < rndIterNum; i++) {
 
                 Solution RMLE = evaluator.randomMLE(residualNeeds, randomMLEMap);
-                //   System.out.println(RMLE.toString());
+                //   System.out.println(MLE.toString());
 
                 acc += RMLE.sigma1;
                 sAcc += RMLE.sigma0;
@@ -169,12 +178,12 @@ public class XTool extends CmdLineTool {
                 predictionList.add(new Prediction(residualNeeds.get(j), null, accumulator[j]));
             }
 
-            RMLE = new Solution(predictionList, -1);
-            RMLE.setKey("RMLE");
-            RMLE.model = "RMLE";
-            RMLE.sigma1 = acc / rndIterNum;
-            RMLE.sigma0 = sAcc / rndIterNum;
-            // System.out.println(RMLE);
+            MLE = new Solution(predictionList, -1);
+            MLE.setKey("MLE");
+            MLE.model = "MLE";
+            MLE.sigma1 = acc / rndIterNum;
+            MLE.sigma0 = sAcc / rndIterNum;
+            // System.out.println(MLE);
 
         }
 
@@ -201,7 +210,7 @@ public class XTool extends CmdLineTool {
         // RxT.createRow(++counter).createCell(1).setCellValue("OracleMin");
         RxT.createRow(++counter).createCell(1).setCellValue("Oracle");
         RxT.createRow(++counter).createCell(1).setCellValue("RND");
-        RxT.createRow(++counter).createCell(1).setCellValue("RMLE");
+        RxT.createRow(++counter).createCell(1).setCellValue("MLE");
 
 
         int c = 1;
@@ -237,8 +246,15 @@ public class XTool extends CmdLineTool {
         } else if (catB && (Collection.CW09B.equals(dataset.collection()) || Collection.CW12B.equals(dataset.collection()))) {
             return "catb_evals";
         } else {
+
+            if (spam != -1) {
+                System.out.println("manuel supplied spam threshold " + spam);
+                return "spam_" + spam + "_evals";
+            }
+
             final int bestSpamThreshold = SpamEvalTool.bestSpamThreshold(dataset, tag, measure, op);
             System.out.println("best spam threshold " + bestSpamThreshold);
+            this.spam = bestSpamThreshold;
             return bestSpamThreshold == 0 ? "evals" : "spam_" + bestSpamThreshold + "_evals";
         }
     }
@@ -287,11 +303,13 @@ public class XTool extends CmdLineTool {
     private int runCounter = 0;
     Set<String> modelSet = null;
 
-    final List<Solution> solutionList = new ArrayList<>();
+    private final List<Solution> solutionList = new ArrayList<>();
     private final List<Solution> cartesianSolutionList = new ArrayList<>();
 
     Map<String, Set<TFDAwareNeed>> winnerMap = null;
     Map<String, Set<TFDAwareNeed>> loserMap = null;
+
+    //  private PrintWriter out;
 
     @Override
     public void run(Properties props) throws Exception {
@@ -308,12 +326,12 @@ public class XTool extends CmdLineTool {
         final DataSet testDataSet = CollectionFactory.dataset(test, tfd_home);
         final DataSet trainDataSet = CollectionFactory.dataset(train, tfd_home);
 
-        final Decorator testDecorator = new Decorator(testDataSet, tag, freq);
-        final Decorator trainDecorator = new Decorator(trainDataSet, tag, freq);
+        final Decorator testDecorator = new Decorator(testDataSet, tag, freq, numBins);
+        final Decorator trainDecorator = new Decorator(trainDataSet, tag, freq, numBins);
 
 
         final Evaluator trainEvaluator = new Evaluator(trainDataSet, tag, optimize, models, evalDirectory(trainDataSet, optimize), op);
-        final Evaluator testEvaluator = new Evaluator(testDataSet, tag, report, trainEvaluator.models(), evalDirectory(testDataSet, report), op);
+        final Evaluator testEvaluator = new Evaluator(testDataSet, tag, report, models, evalDirectory(testDataSet, report), op);
 
 
         modelSet = trainEvaluator.getModelSet();
@@ -362,7 +380,7 @@ public class XTool extends CmdLineTool {
         }
 
 
-        Solution SGL = testEvaluator.modelAsSolution(singleHitModelFromTraining, residualNeeds);
+        Solution SGL = testEvaluator.modelAsSolution(testEvaluator.prettify(singleHitModelFromTraining), residualNeeds);
 
         SGL.model = "SGL";
         SGL.key = "SGL";
@@ -379,7 +397,16 @@ public class XTool extends CmdLineTool {
 
         checkNoWinnerLoserCase();
 
+        //out = new PrintWriter(Files.newBufferedWriter(testDataSet.collectionPath().resolve(test + tag + optimize + "WinLoseSetSimilarity" + (var == 0 ? "" : "Var" + var) + "Features.txt"), StandardCharsets.US_ASCII));
+        //out.println("#This is a tab-separated file, which generated by ./run.sh X -test CW09B -train CW09B -optimize NDCG100 -report NDCG100 -tag " + tag);
+        // out.print("QueryID");
+        // for (String model : modelSet) {
+        //     out.print("," + prettyModel(model) + "Win," + prettyModel(model) + "Lose");
+        // }
+        // out.println();
         doSelectiveTermWeighting(testQueries, testEvaluator);
+        // out.flush();
+        // out.close();
         Map<String, Double> geoRiskMap = addGeoRisk2Sheet(RxT);
 
         accuracyList.sort(Comparator.comparing(o -> o.key));
@@ -389,12 +416,12 @@ public class XTool extends CmdLineTool {
         writeSolution2SummarySheet(SGL);
         writeSolution2SummarySheet(oracleMax);
         writeSolution2SummarySheet(RND);
-        writeSolution2SummarySheet(RMLE);
+        writeSolution2SummarySheet(MLE);
 
 
         accuracyList.add(oracleMax);
         accuracyList.add(RND);
-        accuracyList.add(RMLE);
+        accuracyList.add(MLE);
         accuracyList.add(SEL);
 
         accuracyList.forEach(solution -> {
@@ -406,8 +433,8 @@ public class XTool extends CmdLineTool {
         dumpRankInfo();
 
 
-        RMLE.predict = Predict.DIV;
-        // solutionList.add(RMLE);
+        MLE.predict = Predict.DIV;
+        // solutionList.add(MLE);
         // solutionList.add(SGL);
         persistSolutionsLists();
 
@@ -449,10 +476,19 @@ public class XTool extends CmdLineTool {
         return ranks;
     }
 
+    private static List<Integer> ranksRisk(final List<Solution> solutionList) {
+
+        List<Integer> ranks = ranks(solutionList.size());
+
+        ranks.sort((o1, o2) -> Double.compare(solutionList.get(o2).geoRisk, solutionList.get(o1).geoRisk));
+
+        return ranks;
+    }
+
     private static Solution sel(List<Solution> solutionList) {
 
         for (Solution solution : solutionList)
-            if ("DIV_Cm".equals(solution.key))
+            if (("DIV_" + BEST).equals(solution.key))
                 return solution;
 
         throw new RuntimeException("cannot find selective model in the list!");
@@ -548,7 +584,7 @@ public class XTool extends CmdLineTool {
 
         String anchor = "KStemAnchor".equals(tag) ? "Anchor" : "NoAnchor";
 
-        String tableName = test.toString() + report.toString() + train.toString() + optimize.toString() + anchor;
+        String tableName = test.toString() + report.toString() + train.toString() + optimize.toString() + anchor + "spam" + spam;
         String header = header();
         return String.format(header, prettyDataSet(test.toString()), anchor, residualNeedsSize, report.toString(), tableName, report.toString());
     }
@@ -560,9 +596,9 @@ public class XTool extends CmdLineTool {
 
         rankInfo = new RankInfo();
 
-        solutionList.sort((Solution o1, Solution o2) -> Double.compare(o2.geoRisk, o1.geoRisk));
+        solutionList.sort((Solution o1, Solution o2) -> Double.compare(o2.mean, o1.mean));
 
-        List<Integer> ranksMean = ranksMean(solutionList);
+        List<Integer> ranksRisk = ranksRisk(solutionList);
         List<Integer> ranksSigma1 = sigma0 ? ranksSigma0(solutionList) : ranksSigma1(solutionList);
 
         Solution sel = sel(solutionList);
@@ -572,12 +608,12 @@ public class XTool extends CmdLineTool {
             Solution s = solutionList.get(i);
 
             int rankSigma1 = ranksSigma1.indexOf(i);
-            int rankMean = ranksMean.indexOf(i);
+            int rankRisk = ranksRisk.indexOf(i);
             String line;
             if (sigma0)
-                line = String.format("%s & %.2f & %d & %.5f & %d & %.5f & %d \\\\", LatexTool.latexModel(s.key, false), s.sigma0, rankSigma1, s.mean, rankMean, s.geoRisk, i);
+                line = String.format("%s & %.2f & %d & %.4f & %d & %.4f & %d \\\\", LatexTool.latexModel(s.key, false), s.sigma0, rankSigma1, s.mean, i, s.geoRisk, rankRisk);
             else
-                line = String.format("%s & %.2f & %.2f & %d & %.5f & %d & %.5f & %d \\\\", LatexTool.latexModel(s.key), s.sigma0, s.sigma1, rankSigma1, s.mean, rankMean, s.geoRisk, i);
+                line = String.format("%s & %.2f & %.2f & %d & %.4f & %d & %.4f & %d \\\\", LatexTool.latexModel(s.key), s.sigma0, s.sigma1, rankSigma1, s.mean, i, s.geoRisk, rankRisk);
 
             if (isSameT(sel, s) || sel.key.equals(s.key))
                 line = "$^\\dagger$" + line;
@@ -587,8 +623,8 @@ public class XTool extends CmdLineTool {
 
             if (sel.key.equals(s.key)) {
                 rankInfo.accuracy = rankSigma1;
-                rankInfo.effectiveness = rankMean;
-                rankInfo.robustness = i;
+                rankInfo.effectiveness = i;
+                rankInfo.robustness = rankRisk;
             }
 
             if (!sel.key.equals(s.key)) {
@@ -607,6 +643,8 @@ public class XTool extends CmdLineTool {
             }
 
             builder.append(line).append("\n");
+
+            System.err.println(String.format(" \\multicolumn{1}{l|}{%s} &  %.4f & %.4f &  %d  &  %d &  %d & %d \\\\", LatexTool.latexModel(s.key, false), s.mean, s.geoRisk, rankRisk, s.hits0, s.hits1, s.hits2));
         }
 
         builder.append("\\hline\n" +
@@ -725,13 +763,13 @@ public class XTool extends CmdLineTool {
     void doSelectiveTermWeighting(List<TFDAwareNeed> testQueries, Evaluator testEvaluator) {
         for (final QuerySimilarity querySimilarity : KNNTool.querySimilarities()) {
 
-            for (Predict predict : new Predict[]{DIV, LOS, WIN}) {
+            for (Predict predict : new Predict[]{DIV}) {
 
                 Map<String, Integer> affairs = new HashMap<>();
 
                 final String key = predict.toString() + "_" + querySimilarity.toString();
 
-                if (DIV.equals(predict) && querySimilarity instanceof CartesianQueryTermSimilarity && "Cm".equals(querySimilarity.name())) {
+                if (DIV.equals(predict) && querySimilarity instanceof CartesianQueryTermSimilarity && BEST.equals(querySimilarity.name())) {
                     ++counter;
                     RxT.createRow(counter).createCell(1).setCellValue(key);
                 }
@@ -810,6 +848,7 @@ public class XTool extends CmdLineTool {
                                     throw new RuntimeException("losS " + losS.model + " is not equal to " + model + "!");
 
                                 list.add(new ModelScore(model, (winS.score) / (losS.score)));
+
                                 i++;
                             }
 
@@ -914,22 +953,21 @@ public class XTool extends CmdLineTool {
 
                     if (null == predictedModel) throw new RuntimeException("predictedModel is null!");
 
-                    final double predictedScore = testEvaluator.score(testQuery, predictedModel);
+                    final double predictedScore = testEvaluator.score(testQuery, testEvaluator.prettify(predictedModel));
 
                     final Prediction predicted = new Prediction(testQuery, predictedModel, predictedScore);
 
-                    if (DIV.equals(predict) && querySimilarity instanceof CartesianQueryTermSimilarity && "Cm".equals(querySimilarity.name())) {
-
+                    if (DIV.equals(predict) && querySimilarity instanceof CartesianQueryTermSimilarity && BEST.equals(querySimilarity.name())) {
                         RxT.getRow(counter).createCell(column).setCellValue(predicted.predictedScore);
                     }
 
 
                     predictionList.add(predicted);
 
-                    if (testEvaluator.multiLabelMap().get(testQuery).contains(predictedModel)) {
+                    if (testEvaluator.multiLabelMap(1.0).get(testQuery).contains(predictedModel)) {
                         incrementAffairs(affairs, predictedModel + "_" + predictedModel);
                     } else {
-                        for (String actualModel : testEvaluator.multiLabelMap().get(testQuery)) {
+                        for (String actualModel : testEvaluator.multiLabelMap(1.0).get(testQuery)) {
                             incrementAffairs(affairs, predictedModel + "_" + actualModel);
                         }
                     }
@@ -951,14 +989,14 @@ public class XTool extends CmdLineTool {
                 solution.model = querySimilarity.name();
                 solution.predict = predict;
 
-                if (DIV.equals(predict) && querySimilarity instanceof CartesianQueryTermSimilarity && "Cm".equals(querySimilarity.name())) {
+                if (DIV.equals(predict) && querySimilarity instanceof CartesianQueryTermSimilarity && BEST.equals(querySimilarity.name())) {
                     SEL = solution.clone();
                 }
 
                 writeSolution2SummarySheet(solution);
 
                 if (querySimilarity instanceof CartesianQueryTermSimilarity) {
-                    if ("Cm".equals(solution.model))
+                    if (BEST.equals(solution.model))
                         solutionList.add(solution);
                 } else
                     solutionList.add(solution);
@@ -1088,10 +1126,7 @@ public class XTool extends CmdLineTool {
             for (String actual : modelSet) {
                 String k = predicted + "_" + actual;
 
-                final int count;
-                if (affairs.containsKey(k))
-                    count = affairs.get(k);
-                else count = 0;
+                final int count = affairs.getOrDefault(k, 0);
 
                 sheet.getRow(i).createCell(j, CellType.NUMERIC).setCellValue(count);
 

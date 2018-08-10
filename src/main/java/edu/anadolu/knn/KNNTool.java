@@ -26,6 +26,9 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static edu.anadolu.knn.CartesianQueryTermSimilarity.Aggregation.Ari;
+import static edu.anadolu.knn.CartesianQueryTermSimilarity.Aggregation.Euclid;
+
 /**
  * k-Nearest Neighbors (k-NN) classification algorithm.
  * A query is classified by a majority vote of its neighbors,
@@ -56,14 +59,14 @@ public class KNNTool extends EvaluatorTool {
 
                 // Does not consider zero: number of documents that does not contain the term (idf)
 
-                /**
-                 chis.add(new XChi(divide, cdf));
 
-                 if (!cdf) {
-                 chis.add(new KullbackLeiber(divide));
-                 chis.add(new JensenShannon(divide));
-                 }
-                 **/
+                //chis.add(new XChi(divide, cdf));
+
+                if (!cdf) {
+                    chis.add(new KullbackLeibler(divide));
+                    chis.add(new JensenShannon(divide));
+                }
+
 
             }
 
@@ -81,12 +84,8 @@ public class KNNTool extends EvaluatorTool {
             //  querySimilarities.add(new AverageDFQuerySimilarity(chi, zero));
             if (!zero)
                 querySimilarities.add(new DFAverageQuerySimilarity(chi, zero));
-            for (CartesianQueryTermSimilarity.Aggregation agg : CartesianQueryTermSimilarity.Aggregation.values())
-                for (CartesianQueryTermSimilarity.Way way :
-                        new CartesianQueryTermSimilarity.Way[]
-                                {
-                                        CartesianQueryTermSimilarity.Way.m
-                                }) {
+            for (CartesianQueryTermSimilarity.Aggregation agg : new CartesianQueryTermSimilarity.Aggregation[]{Euclid, Ari})
+                for (CartesianQueryTermSimilarity.Way way : CartesianQueryTermSimilarity.Way.values()) {
                     querySimilarities.add(new CartesianQueryTermSimilarity(chi, zero, agg, way));
                     //  querySimilarities.add(new DiscountCartesianSimilarity(chi, zero, agg, way));
                     // querySimilarities.add(new UltimateCartesianSimilarity(chi, zero, agg, way));
@@ -136,7 +135,8 @@ public class KNNTool extends EvaluatorTool {
         return scores;
     }
 
-    public final double[] oracleMinScoreArray(Evaluator evaluator, List<InfoNeed> residualTFDAwareNeeds, Fold[] folds) {
+    public final double[] oracleMinScoreArray(Evaluator evaluator, List<InfoNeed> residualTFDAwareNeeds, Fold[]
+            folds) {
 
         Map<InfoNeed, Double> oracleMinScoreMap = evaluator.oracleMinScoreMap(residualTFDAwareNeeds);
         double[] oracleMinScores = new double[residualTFDAwareNeeds.size()];
@@ -525,7 +525,7 @@ public class KNNTool extends EvaluatorTool {
 
         final Map<InfoNeed, Set<String>> singleLabelMap = evaluator.singleLabelMap();
 
-        final Decorator decorator = new Decorator(dataset, tag, Freq.Rel);
+        final Decorator decorator = new Decorator(dataset, tag, Freq.Rel, 1000);
 
 
         Fold[] folds = folds(dataset, residualNeeds);

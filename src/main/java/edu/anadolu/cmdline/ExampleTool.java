@@ -26,8 +26,8 @@ class ExampleTool extends CmdLineTool {
         return "Example Utility";
     }
 
-    @Option(name = "-tag", metaVar = "[KStemAnalyzer|KStemAnalyzerAnchor]", required = false, usage = "Index Tag")
-    protected String tag = "KStemAnalyzer";
+    @Option(name = "-tag", metaVar = "[KStem|KStemAnchor]", required = false, usage = "Index Tag")
+    protected String tag = "KStem";
 
     private Workbook workbook;
 
@@ -45,7 +45,7 @@ class ExampleTool extends CmdLineTool {
 
         DataSet dataSet = CollectionFactory.dataset(collection, tfd_home);
 
-        Decorator decorator = new Decorator(dataSet, tag, Freq.Rel);
+        Decorator decorator = new Decorator(dataSet, tag, Freq.Rel, 1000);
 
         DiscountCartesianSimilarity similarity = new DiscountCartesianSimilarity(new ChiSquare(false, false), true, CartesianQueryTermSimilarity.Aggregation.Euclid, CartesianQueryTermSimilarity.Way.s);
 

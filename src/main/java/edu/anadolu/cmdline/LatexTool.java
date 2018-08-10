@@ -55,6 +55,7 @@ public final class LatexTool extends EvaluatorTool {
         if ("CW09A".equals(dataSet)) return "ClueWeb09A";
         if ("CW09B".equals(dataSet)) return "ClueWeb09B";
         if ("CW12B".equals(dataSet)) return "ClueWeb12-B13";
+        if ("CW12A".equals(dataSet)) return "ClueWeb12A";
         if ("ROB04".equals(dataSet)) return "Robust Track 2004";
         if ("GOV2".equals(dataSet)) return "Terabyte Track";
         throw new RuntimeException(dataSet + " is unrecognized!");
@@ -78,9 +79,13 @@ public final class LatexTool extends EvaluatorTool {
 
         if (model.startsWith("PL2c")) return printFreeParameters ? "PL2 (" + handleParam(model) + ")" : "PL2";
 
-        if (model.startsWith("DirichletLMc")) return printFreeParameters ? "Dirichlet (" + handleParam(model) + ")" : "Dirichlet";
+        if (model.startsWith("DirichletLMc")) return printFreeParameters ? "Dirichlet (" + handleParam(model) + ")" : "DLM";
 
-        if ("DIV_Cm".equals(model)) return "\\bfseries SEL";
+        if ("DIV_Cm".equals(model)) return "SEL";
+
+        if ("RND".equals(model)) return "\\bfseries RND";
+
+        if ("MLE".equals(model)) return "\\bfseries MLE";
 
         return model;
     }
@@ -329,9 +334,9 @@ public final class LatexTool extends EvaluatorTool {
                         measure.metric().toString(),
                         measure.k(),
                         measure.metric().toString(),
-                        inner("KStemAnalyzer"),
+                        inner("KStem"),
                         measure.metric().toString(),
-                        inner("KStemAnalyzerAnchor")
+                        inner("KStemAnchor")
                 ));
 
     }
