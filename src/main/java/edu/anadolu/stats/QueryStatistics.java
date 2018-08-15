@@ -52,11 +52,13 @@ public final class QueryStatistics {
         PrintWriter out = new PrintWriter(Files.newBufferedWriter(dataset.collectionPath().resolve("stats").resolve("query_stats.tex"), StandardCharsets.US_ASCII));
 
 
+        int r = 0, s = 0;
         for (Track track : dataset.tracks()) {
 
 
             List<InfoNeed> needs = track.getTopics();
 
+            DescriptiveStatistics spam = new DescriptiveStatistics();
             DescriptiveStatistics relevant = new DescriptiveStatistics();
             DescriptiveStatistics nonRelevant = new DescriptiveStatistics();
 
@@ -66,6 +68,9 @@ public final class QueryStatistics {
                 queryLength += need.wordCount();
                 relevant.addValue(need.relevant());
                 nonRelevant.addValue(need.nonRelevant());
+                spam.addValue(need.spam());
+                s += need.spam();
+                r += need.relevant();
             }
 
             out.print(track.toString());
@@ -80,6 +85,9 @@ public final class QueryStatistics {
             out.print(averageAndStandardDeviation(relevant));
             out.print(" & ");
 
+            out.print(averageAndStandardDeviation(spam));
+            out.print(" & ");
+
             out.print(averageAndStandardDeviation(nonRelevant));
             out.print(" & ");
 
@@ -88,10 +96,14 @@ public final class QueryStatistics {
 
             out.print("\\\\");
             out.println();
+
+            System.out.println(track + " s=" + spam.getSum() + " r=" + relevant.getSum());
         }
 
         out.flush();
         out.close();
+
+        System.out.println("s=" + s + " r=" + r);
 
     }
 
