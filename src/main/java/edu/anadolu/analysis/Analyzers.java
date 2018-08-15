@@ -5,6 +5,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
+import org.apache.lucene.analysis.miscellaneous.TruncateTokenFilterFactory;
+import org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory;
 import org.apache.lucene.analysis.standard.UAX29URLEmailTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tr.Zemberek3StemFilterFactory;
@@ -149,6 +151,21 @@ public class Analyzers {
                         .addTokenFilter("lowercase")
                         .build(), analyzerPerField);
 
+            case Snowball:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("apostrophe")
+                        .addTokenFilter("turkishlowercase")
+                        .addTokenFilter(SnowballPorterFilterFactory.class, "language", "Turkish")
+                        .build();
+
+            case F5Stem:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("apostrophe")
+                        .addTokenFilter("turkishlowercase")
+                        .addTokenFilter(TruncateTokenFilterFactory.class,"prefixLength","5")
+                        .build();
             default:
                 throw new AssertionError(Analyzers.class);
 

@@ -5,7 +5,7 @@ package edu.anadolu.analysis;
  */
 public enum Tag {
 
-    NoStem, KStem, ICU, Latin, Zemberek, NoStemTurkish, KStemField, Script, UAX;
+    NoStem, KStem, ICU, Latin, Zemberek, NoStemTurkish, KStemField, Script, UAX, Snowball, F5Stem;
 
     public static Tag tag(String indexTag) {
 
