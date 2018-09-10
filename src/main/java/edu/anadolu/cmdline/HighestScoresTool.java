@@ -54,7 +54,7 @@ public class HighestScoresTool extends CmdLineTool {
             evalDirectory = "catb_evals";
 
         final String[] tagsArr = tags.split("_");
-        if(tagsArr.length!=2) return;
+        //if(tagsArr.length!=2) return;
 
         Set<String> modelIntersection = new HashSet<>();
 
@@ -76,6 +76,7 @@ public class HighestScoresTool extends CmdLineTool {
         needs = evaluatorMap.get(tagsArr[0]).getNeeds();
         Integer needSize = needs.size();
         for (String model : modelIntersection) {
+            double avgBestScores=0.0;
             System.out.println(model);
             System.out.println("Query\tTag\t"+measure);
             for(int i=0; i<needSize;i++){
@@ -89,8 +90,9 @@ public class HighestScoresTool extends CmdLineTool {
                     }
                 }
                 System.out.println(needs.get(i).id()+"\t"+bestTag+"\t"+bestScore);
-
+                avgBestScores+=bestScore;
             }
+            System.out.println("Average\t"+avgBestScores/needSize);
             System.out.println("========\t========\t=======");
         }
     }
