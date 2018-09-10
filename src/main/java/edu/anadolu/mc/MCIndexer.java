@@ -1,5 +1,6 @@
 package edu.anadolu.mc;
 
+import edu.anadolu.Indexer;
 import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.similarities.MetaTerm;
@@ -48,9 +49,10 @@ public class MCIndexer {
             int id = rs.getInt(1);
             Document document = new Document();
 
-            document.add(new NumericDocValuesField("id", id));
-            document.add(new StringField("id", Integer.toString(id), Field.Store.YES));
-            document.add(new TextField("contents", rs.getString(2) + " " + rs.getString(3), Field.Store.NO));
+            //document.add(new NumericDocValuesField("id", id));
+            document.add(new StringField(Indexer.FIELD_ID, Integer.toString(id), Field.Store.YES));
+            document.add(new TextField(Indexer.FIELD_CONTENTS, rs.getString(2) + " " + rs.getString(3), Field.Store.NO));
+            document.add(Indexer.ARTIFICIAL);
 
             writer.addDocument(document);
         }
