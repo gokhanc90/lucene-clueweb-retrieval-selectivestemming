@@ -159,6 +159,13 @@ public class Analyzers {
                         .addTokenFilter(SnowballPorterFilterFactory.class, "language", "Turkish")
                         .build();
 
+            case SnowballEng:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("lowercase")
+                        .addTokenFilter(SnowballPorterFilterFactory.class, "language", "English")
+                        .build();
+
             case F5Stem:
                 return CustomAnalyzer.builder()
                         .withTokenizer("standard")
