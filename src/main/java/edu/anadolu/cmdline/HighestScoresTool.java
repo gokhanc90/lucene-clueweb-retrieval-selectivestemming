@@ -1,7 +1,6 @@
 package edu.anadolu.cmdline;
 
 
-import edu.anadolu.QuerySelector;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
@@ -12,6 +11,9 @@ import org.kohsuke.args4j.Option;
 
 import java.util.*;
 
+/**
+ * This class produces the best scores for each information need and IR model among the multisystems (Tags)
+ */
 public class HighestScoresTool extends CmdLineTool {
     @Option(name = "-collection", required = true, usage = "underscore separated collection values", metaVar = "CW09A_CW12B")
     protected Collection collection;
