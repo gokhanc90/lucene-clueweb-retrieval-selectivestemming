@@ -4,6 +4,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
+import org.apache.lucene.analysis.en.EnglishMinimalStemFilterFactory;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.miscellaneous.TruncateTokenFilterFactory;
 import org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory;
@@ -158,12 +159,23 @@ public class Analyzers {
                         .addTokenFilter("turkishlowercase")
                         .addTokenFilter(SnowballPorterFilterFactory.class, "language", "Turkish")
                         .build();
-
+            /**
+             * Porter2
+             */
             case SnowballEng:
                 return CustomAnalyzer.builder()
                         .withTokenizer("standard")
                         .addTokenFilter("lowercase")
                         .addTokenFilter(SnowballPorterFilterFactory.class, "language", "English")
+                        .build();
+            /**
+             * "S-Stemmer" from How Effective Is Suffixing? Donna Harman.
+             */
+            case Sstem:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("lowercase")
+                        .addTokenFilter(EnglishMinimalStemFilterFactory.class)
                         .build();
 
             case F5Stem:
