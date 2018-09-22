@@ -152,7 +152,7 @@ public class Analyzers {
                         .addTokenFilter("lowercase")
                         .build(), analyzerPerField);
 
-            case Snowball:
+            case SnowballTr:
                 return CustomAnalyzer.builder()
                         .withTokenizer("standard")
                         .addTokenFilter("apostrophe")
