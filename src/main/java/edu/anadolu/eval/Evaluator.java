@@ -1422,7 +1422,7 @@ public class Evaluator {
         return map;
     }
 
-    private void addSingleItem2Map(Map<String, List<InfoNeed>> map, String bestSim, InfoNeed need) {
+    protected static void addSingleItem2Map(Map<String, List<InfoNeed>> map, String bestSim, InfoNeed need) {
         if (map.containsKey(bestSim)) {
             List<InfoNeed> integerList = map.get(bestSim);
             if (integerList.contains(need))
@@ -1480,7 +1480,7 @@ public class Evaluator {
         return singleLabelMap;
     }
 
-    private static Map<InfoNeed, Set<String>> revert(Map<String, List<InfoNeed>> map) {
+    protected static Map<InfoNeed, Set<String>> revert(Map<String, List<InfoNeed>> map) {
 
         Map<InfoNeed, Set<String>> reverted = new LinkedHashMap<>();
 
@@ -2054,6 +2054,26 @@ public class Evaluator {
         }
     }
 
+    public void printMeanWT(Set<String> models) {
+
+        for (Track wt : tracks) {
+
+            List<InfoNeed> needs = getNeedsPerTW(wt);
+
+            System.out.print(wt.toString() + "(" + needs.size() + ")\t");
+
+            List<ModelScore> list = averageForAllModels(needs);
+
+            Collections.sort(list);
+
+            for (ModelScore modelScore : list)
+                if(models.contains(modelScore.model))
+                    System.out.print(modelScore.model + "(" + String.format("%.5f", modelScore.score) + ")\t");
+
+            System.out.println();
+        }
+    }
+
     List<Double> toDouble(List<ModelScore> all) {
         List<Double> array = new ArrayList<>(all.size());
         for (ModelScore modelScore : all)
@@ -2103,5 +2123,24 @@ public class Evaluator {
         System.out.println();
 
         return list;
+    }
+
+    public void printMean(Set<String> models) {
+
+        List<ModelScore> list = averageForAllModels(needs);
+
+        Collections.sort(list);
+
+        if (needs.size() < 100)
+            System.out.print("ALL(" + needs.size() + ") \t");
+        else
+            System.out.print("ALL(" + needs.size() + ")\t");
+
+        for (ModelScore modelScore : list)
+            if(models.contains(modelScore.model))
+                System.out.print(modelScore.model + "(" + String.format("%.5f", modelScore.score) + ")\t");
+
+        System.out.println();
+
     }
 }
