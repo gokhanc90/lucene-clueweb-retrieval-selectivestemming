@@ -192,13 +192,13 @@ public class SystemEvaluator{
     public void printOracleMax(){
         for(String model:modelIntersection) {
             Solution s = oracleMaxAsSolution(needs, model);
-            System.out.println(s.key + " max:\t" + s.getMean()+"\t"+s.hits0+"\t"+s.hits1+"\t"+s.hits2);
+            System.out.println(s.key + " max:\t" + s.getMean() + "\t" + s.hits0 + "\t" + s.hits1 + "\t" + s.hits2);
         }
     }
     public void printRandom(){
         for(String model:modelIntersection) {
             Solution s = randomAsSolution(needs, model);
-            System.out.println(s.key + ":\t" + s.getMean()+"\t"+s.hits0+"\t"+s.hits1+"\t"+s.hits2);
+            System.out.println(s.key + ":\t" + s.getMean() + "\t" + s.hits0 + "\t" + s.hits1 + "\t" + s.hits2);
         }
     }
 
@@ -440,7 +440,7 @@ public class SystemEvaluator{
                 double score = tagEvaluatorMap.get(Tag.tag(system)).score(need, model);
                 sum += score;
             }
-            TF.put(model, sum);
+            TF.put(system, sum);
         }
 
         return TF;
@@ -622,5 +622,196 @@ public class SystemEvaluator{
         }
 
         return new SystemScore(String.format("RandomMLE (\u00B1%.2f)", Math.sqrt(StatUtils.variance(means))), StatUtils.mean(means));
+    }
+
+
+    private List<InfoNeed> needsSortedByVariance(String model) {
+
+        List<InfoNeed> needs = new ArrayList<>();
+        needs.addAll(this.needs);
+        needs.sort(Comparator.comparing(varianceMap::get,(o1,o2)->o1.get(model).compareTo(o2.get(model))));
+        return needs;
+    }
+
+    public void printTopicModelSortedByVariance() {
+        for(String model:modelIntersection) {
+
+            List<InfoNeed> needs = needsSortedByVariance(model);
+            System.out.println(model);
+            for (InfoNeed need : needs) {
+                System.out.println(sortedTopicModel(need,model));
+            }
+        }
+
+    }
+
+    public String sortedTopicModel(InfoNeed need,String model) {
+
+
+        List<SystemScore> list = performanceMap.get(need).get(model);
+        Collections.sort(list);
+
+        double standardError = Math.sqrt(varianceMap.get(need).get(model) / list.size());
+
+        StringBuilder builder = new StringBuilder();
+        builder.append(need.id()).append("\t").append(String.format("s=%.4f", standardError)).append("\t");
+
+        double best = list.get(0).score;
+        double worst = list.get(list.size() - 1).score;
+
+        for (SystemScore systemScoree : list) {
+
+            if (systemScoree.score > (best - standardError))
+                builder.append("+");
+
+            if (systemScoree.score < (worst + standardError))
+                builder.append("-");
+
+            builder.append(systemScoree.toString()).append("\t");
+
+
+            if ((systemScoree.score > (best - standardError * 2.0)) && (systemScoree.score < (worst + standardError * 2.0)))
+                System.err.println(systemScoree.toString() + " is both winner and loser for the need :" + need.toString());
+
+        }
+
+        return builder.toString();
+    }
+    public void printCountMap(){
+        for(String model:modelIntersection) {
+            System.out.println(model);
+            Map<String, List<InfoNeed>> bestModelMap = absoluteBestSystemMap(model);
+            Map<String, Double> riskMap = riskSOTA(model);
+            Map<String, Double> ctiMap = cti(model);
+            Map<String, Double> zRiskMap = zRisk(model);
+            Map<String, Double> geoRiskMap = geoRisk(model);
+            System.out.println("System\tbestCount\tsotaRisk\tCTI\tzRisk\tgeoRisk");
+
+            for (Map.Entry<String, List<InfoNeed>> entry : bestModelMap.entrySet()) {
+                System.out.print(entry.getKey() + "\t" + entry.getValue().size());
+
+                if (riskMap.containsKey(entry.getKey())) {
+                    System.out.print("\t" + String.format("%.4f", riskMap.get(entry.getKey())));
+                } else System.out.print("\t---");
+
+                if (ctiMap.containsKey(entry.getKey())) {
+                    System.out.print("\t" + String.format("%.4f", ctiMap.get(entry.getKey())));
+                } else System.out.print("\t---");
+
+                if (zRiskMap.containsKey(entry.getKey())) {
+                    System.out.print("\t" + String.format("%.4f", zRiskMap.get(entry.getKey())));
+                } else System.out.print("\t---");
+
+                if (geoRiskMap.containsKey(entry.getKey())) {
+                    System.out.print("\t" + String.format("%.4f", geoRiskMap.get(entry.getKey())));
+                } else System.out.print("\t---");
+
+                System.out.println();
+
+            }
+
+            for (Map.Entry<String, List<InfoNeed>> entry : bestModelMap.entrySet())
+                System.out.println(entry.getKey() + "\t" + entry.getValue());
+        }
+    }
+    public Map<String, List<InfoNeed>> absoluteBestSystemMap(String model) {
+
+        Map<String, List<InfoNeed>> map = new HashMap<>();
+
+        for (InfoNeed need : needs) {
+
+            if (modelAllZeroMap.get(model).contains(need) || modelAllSameMap.get(model).contains(need))
+                continue;
+
+            Set<String> winners = multiLabelWinners(need, 1.0,model);
+
+            if (winners.size() > 1) continue;
+
+            String bestSim = Evaluator.onlyItem(winners);
+
+            Evaluator.addSingleItem2Map(map, bestSim, need);
+
+        }
+
+        map.put("ALL_SAME", bestModelSystemMap.get(model).get("ALL_SAME") == null ? Collections.emptyList() : bestModelSystemMap.get(model).get("ALL_SAME"));
+        map.put("ALL_ZERO", bestModelSystemMap.get(model).get("ALL_ZERO") == null ? Collections.emptyList() : bestModelSystemMap.get(model).get("ALL_ZERO"));
+
+        tags.stream().filter(system -> !map.containsKey(system)).forEach(system -> map.put(system, Collections.emptyList()));
+        return map;
+    }
+
+    public Map<String, Double> riskSOTA(String model) {
+
+        Map<String, Double> riskMap = new HashMap<>();
+
+        Map<InfoNeed, SystemScore> oracleMap = oracleMap(model);
+
+        for (String system : tags) {
+            double avg = 0.0;
+
+            for (InfoNeed need : needs) {
+                avg +=tagEvaluatorMap.get(Tag.tag(system)).score(need, model) - oracleMap.get(need).score;
+            }
+
+            avg /= needs.size();
+            // System.out.println(model + " " + avg);
+
+            riskMap.put(system, avg);
+        }
+
+        return riskMap;
+    }
+    public Map<String, Double> cti(String model) {
+
+        final Map<String, Double> rowSum = rowSum(model);
+        final Map<InfoNeed, Double> columnSum = columnSum(model);
+
+        final double N = N(model);
+
+        Map<String, Double> ctiMap = new HashMap<>();
+
+        for (String system : tags) {
+
+            double cti = 0.0;
+
+            for (InfoNeed need : needs) {
+
+                final double e = rowSum.get(system) * columnSum.get(need) / N;
+
+                if (e == 0.0) continue;
+
+                cti += Math.pow((tagEvaluatorMap.get(Tag.tag(system)).score(need, model) - e), 2) / e;
+            }
+
+            ctiMap.put(system, cti);
+        }
+
+
+        return ctiMap;
+
+    }
+    private Map<InfoNeed, SystemScore> oracleMap(String model) {
+
+        Map<InfoNeed, SystemScore> map = new HashMap<>();
+
+        for (InfoNeed need : needs) {
+
+            double bestScore = Double.NEGATIVE_INFINITY;
+            String bestTag = null;
+
+            for (String tag : tags) {
+                double score = tagEvaluatorMap.get(Tag.tag(tag)).score(need, model);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTag = tag;
+                }
+            }
+
+
+            map.put(need, new SystemScore(bestTag, bestScore));
+        }
+
+
+        return map;
     }
 }

@@ -10,6 +10,7 @@ import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.knn.Measure;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.util.Pair;
+import org.clueweb09.InfoNeed;
 
 import java.util.*;
 
@@ -87,7 +88,22 @@ public class Test {
                 modelIntersection.retainAll(evaluator.getModelSet());
         }
 
+
+
         SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
+
+        systemEvaluator.printTopicModelSortedByVariance();
+
+        //Map<String, List<InfoNeed>> bestModelMap = systemEvaluator.absoluteBestModelMap();
+        //Map<String, Double> riskMap = systemEvaluator.riskSOTA();
+        //Map<String, Double> ctiMap = systemEvaluator.cti();
+        //Map<String, Double> zRiskMap = systemEvaluator.zRisk();
+        //Map<String, Double> geoRiskMap = systemEvaluator.geoRisk();
+
+        systemEvaluator.printCountMap();
+
+
+
         systemEvaluator.printMean();
         systemEvaluator.printMeanWT();
 
@@ -97,7 +113,7 @@ public class Test {
         systemEvaluator.printRandomX();
         //System.out.println("OracleMin : " + evaluator.oracleMin());
         systemEvaluator.printOracleMax();
-        //systemEvaluator.printHighestScoresWithCoV(false);
+        systemEvaluator.printHighestScoresWithCoV(false);
 
         System.out.println("========= Facets ===========");
         //systemEvaluator.printFacets();
