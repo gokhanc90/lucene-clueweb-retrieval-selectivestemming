@@ -1369,7 +1369,7 @@ public class Evaluator {
         return riskMap;
     }
 
-    <T> T onlyItem(Collection<T> items) {
+    static <T> T onlyItem(Collection<T> items) {
         if (items.size() != 1)
             throw new IllegalArgumentException("Collection must have single item; instead it has " + items.size());
 
