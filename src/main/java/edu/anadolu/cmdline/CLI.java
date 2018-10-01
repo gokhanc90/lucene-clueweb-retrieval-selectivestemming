@@ -140,7 +140,7 @@ public final class CLI {
 
         tools.add(new QueryPerTFTool());
 
-        tools.add(new HighestScoresTool());
+        tools.add(new SystemEvaluatorTool());
 
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);

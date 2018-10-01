@@ -177,10 +177,31 @@ public class SystemEvaluator{
     public void printMeanWT(){
         for (Tag tag: tagEvaluatorMap.keySet()) {
             Evaluator evaluator = tagEvaluatorMap.get(tag);
-            System.out.print(tag + "\t");
+            System.out.println(tag);
             evaluator.printMeanWT(modelIntersection);
         }
 
+    }
+    public void printTopicSystemMatrix(){
+        for(String model:modelIntersection) {
+            System.out.println(model);
+
+            StringBuilder header=new StringBuilder("\t");
+            for(InfoNeed need:needs){
+                header.append(need.id()+"\t");
+            }
+            System.out.println(header.toString());
+
+
+            for(String tag: tags){
+                StringBuilder system=new StringBuilder();
+                system.append(tag + "\t");
+                for(InfoNeed need:needs){
+                    system.append(tagEvaluatorMap.get(Tag.tag(tag)).score(need,model)+"\t");
+                }
+                System.out.println(system.toString());
+            }
+        }
     }
     public void printMean(){
         for (Tag tag: tagEvaluatorMap.keySet()) {
@@ -621,7 +642,7 @@ public class SystemEvaluator{
             means[i] = randomXScore(model);
         }
 
-        return new SystemScore(String.format("RandomMLE (\u00B1%.2f)", Math.sqrt(StatUtils.variance(means))), StatUtils.mean(means));
+        return new SystemScore(String.format("RandomMLE %s (\u00B1%.2f)",model, Math.sqrt(StatUtils.variance(means))), StatUtils.mean(means));
     }
 
 
@@ -680,14 +701,14 @@ public class SystemEvaluator{
     public void printCountMap(){
         for(String model:modelIntersection) {
             System.out.println(model);
-            Map<String, List<InfoNeed>> bestModelMap = absoluteBestSystemMap(model);
+            Map<String, List<InfoNeed>> bestSystemMap = absoluteBestSystemMap(model);
             Map<String, Double> riskMap = riskSOTA(model);
             Map<String, Double> ctiMap = cti(model);
             Map<String, Double> zRiskMap = zRisk(model);
             Map<String, Double> geoRiskMap = geoRisk(model);
             System.out.println("System\tbestCount\tsotaRisk\tCTI\tzRisk\tgeoRisk");
 
-            for (Map.Entry<String, List<InfoNeed>> entry : bestModelMap.entrySet()) {
+            for (Map.Entry<String, List<InfoNeed>> entry : bestSystemMap.entrySet()) {
                 System.out.print(entry.getKey() + "\t" + entry.getValue().size());
 
                 if (riskMap.containsKey(entry.getKey())) {
@@ -710,7 +731,7 @@ public class SystemEvaluator{
 
             }
 
-            for (Map.Entry<String, List<InfoNeed>> entry : bestModelMap.entrySet())
+            for (Map.Entry<String, List<InfoNeed>> entry : bestSystemMap.entrySet())
                 System.out.println(entry.getKey() + "\t" + entry.getValue());
         }
     }

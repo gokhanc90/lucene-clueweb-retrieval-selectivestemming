@@ -1,10 +1,12 @@
 package edu.anadolu.cmdline;
 
 
+import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
+import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.knn.Measure;
 import org.clueweb09.InfoNeed;
 import org.kohsuke.args4j.Option;
@@ -14,15 +16,15 @@ import java.util.*;
 /**
  * This class produces the best scores for each information need and IR model among the multisystems (Tags)
  */
-public class HighestScoresTool extends CmdLineTool {
+public class SystemEvaluatorTool extends CmdLineTool {
     @Option(name = "-collection", required = true, usage = "underscore separated collection values", metaVar = "CW09A_CW12B")
     protected Collection collection;
 
     @Option(name = "-metric", required = false, usage = "Effectiveness measure")
     protected Measure measure = Measure.NDCG20;
 
-    @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem]", required = true, usage = "Index Tag")
-    protected String tags = "NoStemTurkish_Zemberek";
+    @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem|NoStemTurkish_Zemberek_SnowballTr_F5Stem]", required = true, usage = "Index Tag")
+    protected String tags = "NoStemTurkish_Zemberek_SnowballTr_F5Stem";
 
     @Option(name = "-op", metaVar = "[AND|OR]", required = false, usage = "query operator (q.op)")
     protected String op = "OR";
@@ -60,13 +62,13 @@ public class HighestScoresTool extends CmdLineTool {
 
         Set<String> modelIntersection = new HashSet<>();
 
-        List<InfoNeed> needs;
-        Map<String, Evaluator> evaluatorMap = new HashMap<>();
+        Map<Tag, Evaluator> evaluatorMap = new HashMap<>();
 
         for (int i = 0; i < tagsArr.length; i++) {
             String tag = tagsArr[i];
             final Evaluator evaluator = new Evaluator(dataSet, tag, measure, "all", evalDirectory, op);
-            evaluatorMap.put(tag, evaluator);
+            evaluator.oracleMax();
+            evaluatorMap.put(Tag.tag(tag), evaluator);
             //needs = evaluator.getNeeds();
 
             if (i == 0)
@@ -75,28 +77,29 @@ public class HighestScoresTool extends CmdLineTool {
                 modelIntersection.retainAll(evaluator.getModelSet());
         }
 
-        needs = evaluatorMap.get(tagsArr[0]).getNeeds();
-        Integer needSize = needs.size();
-        for (String model : modelIntersection) {
-            double avgBestScores=0.0;
-            System.out.println(model);
-            System.out.println("Query\tTag\t"+measure);
-            for(int i=0; i<needSize;i++){
-                String bestTag="";
-                double bestScore = Double.NEGATIVE_INFINITY;
-                for(String tag:tagsArr) {
-                    double score = evaluatorMap.get(tag).score(needs.get(i), model);
-                    if(score>bestScore){
-                        bestScore=score;
-                        bestTag=tag;
-                    }
-                }
-                System.out.println(needs.get(i).id()+"\t"+bestTag+"\t"+bestScore);
-                avgBestScores+=bestScore;
-            }
-            System.out.println("Average\t"+avgBestScores/needSize);
-            System.out.println("========\t========\t=======");
-        }
+
+
+        SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
+        systemEvaluator.printTopicSystemMatrix();
+        systemEvaluator.printTopicModelSortedByVariance();
+        systemEvaluator.printCountMap();
+
+
+        System.out.println("=========  Mean and MeanWT ===========");
+        systemEvaluator.printMean();
+        systemEvaluator.printMeanWT();
+
+        System.out.println("=========  Random and Oracle ===========");
+        systemEvaluator.printRandom();
+        systemEvaluator.printRandomMLE();
+        systemEvaluator.printRandomX();
+        //System.out.println("OracleMin : " + evaluator.oracleMin());
+        systemEvaluator.printOracleMax();
+        systemEvaluator.printHighestScoresWithCoV(false);
+
+        System.out.println("========= Facets ===========");
+        systemEvaluator.printFacets();
+
     }
 
     @Override
