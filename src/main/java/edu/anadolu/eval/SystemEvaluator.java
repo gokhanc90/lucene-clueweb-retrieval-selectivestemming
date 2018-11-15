@@ -161,6 +161,10 @@ public class SystemEvaluator{
         needs=evaluator.getNeeds();
     }
 
+    public List<InfoNeed> getNeeds() {
+        return Collections.unmodifiableList(new ArrayList<>(needs));
+    }
+
     private void setModelIntersection() {
         modelIntersection = new HashSet<>();
         boolean first = true;
@@ -233,7 +237,7 @@ public class SystemEvaluator{
     public void printRandomX(){
         for(String model:modelIntersection) {
             SystemScore s = randomX(model);
-            System.out.println(s.system + " : " + s.score);
+            System.out.println(s.system + " : \t" + s.score);
         }
     }
 
