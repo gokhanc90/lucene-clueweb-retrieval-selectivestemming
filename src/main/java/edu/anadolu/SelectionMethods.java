@@ -22,8 +22,8 @@ public class SelectionMethods {
 
     public static class TermTFDF {
         public static int NumberOfBIN = 10; // set by selective stemming tool
-        public static int maxDF=503775617; // set by selective stemming tool
-        public static int maxTF=Integer.MAX_VALUE; //
+        public static long maxDF=503775617; // set by selective stemming tool
+        public static long maxTF=Integer.MAX_VALUE; //
 
 
         private int indexID;
@@ -63,7 +63,7 @@ public class SelectionMethods {
         }
 
         public void setBinTF(long TF) {
-            int size=maxTF/NumberOfBIN;
+            int size=(int)maxTF/NumberOfBIN;
             this.binTF=(int)TF/size;
         }
 
@@ -72,7 +72,7 @@ public class SelectionMethods {
         }
 
         public void setBinDF(long DF) {
-            int size=maxDF/NumberOfBIN;
+            int size=(int)maxDF/NumberOfBIN;
             this.binDF=(int)DF/size;
         }
 
@@ -83,6 +83,10 @@ public class SelectionMethods {
     }
 
     public static String getPredictedTag(String selectionTag,Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr){
+        if(tagTermTermStats.get(tagsArr[0]).size() == 1){
+            System.err.print(String.format("%s\t","NotChanged One-Term"));
+            return tagsArr[0]; //One-term Stem
+        }
         switch (SelectionTag.tag(selectionTag)) {
             case MSTTF: return MSTTermFreq(tagTermTermStats,tagsArr);
             case MSTDF: return MSTDocFreq(tagTermTermStats, tagsArr);
@@ -181,11 +185,11 @@ public class SelectionMethods {
         listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
 
-        if(listTermTag1.size() == 1){
-            System.err.print(String.format("%s\t","NotChanged One-Term"));
-            return tagsArr[0]; //One-term Stem
-        }
-        else {
+//        if(listTermTag1.size() == 1){
+//            System.err.print(String.format("%s\t","NotChanged One-Term"));
+//            return tagsArr[0]; //One-term Stem
+//        }
+//        else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
@@ -195,7 +199,7 @@ public class SelectionMethods {
                 System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
-        }
+//        }
 
     }
 
@@ -220,11 +224,11 @@ public class SelectionMethods {
         listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
 
-        if(listTermTag1.size() == 1){
-            System.err.print(String.format("%s\t","NotChanged One-Term"));
-            return tagsArr[0]; //One-term Stem
-        }
-        else {
+//        if(listTermTag1.size() == 1){
+//            System.err.print(String.format("%s\t","NotChanged One-Term"));
+//            return tagsArr[1]; //One-term Stem
+//        }
+//        else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
@@ -234,7 +238,7 @@ public class SelectionMethods {
                 System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
-        }
+//        }
 
     }
 
@@ -334,11 +338,11 @@ public class SelectionMethods {
         listTermTag1.sort((t1, t2) -> Long.compare(t1.getDF(), t2.getDF()));
         listTermTag2.sort((t1, t2) -> Long.compare(t1.getDF(), t2.getDF()));
 
-        if(listTermTag1.size() == 1){
-            System.err.print(String.format("%s\t","NotChanged One-Term"));
-            return tagsArr[0]; //One-term Stem
-        }
-        else {
+//        if(listTermTag1.size() == 1){
+//            System.err.print(String.format("%s\t","NotChanged One-Term"));
+//            return tagsArr[1]; //One-term Stem
+//        }
+//        else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
@@ -348,7 +352,7 @@ public class SelectionMethods {
                 System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
-        }
+//        }
 
     }
 
@@ -373,11 +377,11 @@ public class SelectionMethods {
         listTermTag1.sort((t1, t2) -> Long.compare(t1.getTF(), t2.getTF()));
         listTermTag2.sort((t1, t2) -> Long.compare(t1.getTF(), t2.getTF()));
 
-        if(listTermTag1.size() == 1){
-            System.err.print(String.format("%s\t","NotChanged One-Term"));
-            return tagsArr[1]; //One-term KStem
-        }
-        else {
+//        if(listTermTag1.size() == 1){
+//            System.err.print(String.format("%s\t","NotChanged One-Term"));
+//            return tagsArr[1]; //One-term KStem
+//        }
+//        else {
             double val;
             if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
@@ -387,7 +391,7 @@ public class SelectionMethods {
                 System.err.print(String.format("%s\tKendalVal: %f\t","Changed",val));
                 return tagsArr[0];
             }
-        }
+//        }
     }
 
     private static String DFOrder(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {

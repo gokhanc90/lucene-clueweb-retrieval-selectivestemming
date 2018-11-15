@@ -11,6 +11,8 @@ import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
 import edu.anadolu.eval.ModelScore;
+import edu.anadolu.eval.SystemEvaluator;
+import edu.anadolu.eval.SystemScore;
 import edu.anadolu.knn.Measure;
 import edu.anadolu.knn.Prediction;
 import edu.anadolu.knn.Solution;
@@ -21,6 +23,8 @@ import org.clueweb09.InfoNeed;
 import org.kohsuke.args4j.Option;
 
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import static edu.anadolu.field.FieldTool.sortByValue;
 
@@ -42,7 +46,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
     @Option(name = "-metric", required = false, usage = "Effectiveness measure")
     protected Measure measure = Measure.MAP;
 
-    @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem]", required = false, usage = "Index Tag")
+    @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem]", required = false, usage = "First:NoStem Second:Stem")
     protected String tags = "NoStemTurkish_Zemberek";
 
     @Option(name = "-selection", metaVar = "[MSTTF|MSTDF|TFOrder|DFOrder|KendallTauTFOrder|KendallTauDFOrder|MSTTFBinning|MSTDFBinning" +
@@ -55,7 +59,9 @@ public class SelectiveStemmingTool extends CmdLineTool {
     @Option(name = "-binDF", required = false, usage = "Number of bins for DF. Default: 1000 ")
     protected int binDF = 1000;
 
-    protected String baseline;
+    @Option(name = "-residualNeeds", required = false, usage = "Removes ALL_SAME and ALL_ZERO")
+    protected boolean residualNeeds = false;
+
 
     @Option(name = "-spam", metaVar = "[10|15|...|85|90]", required = false, usage = "Non-negative integer spam threshold")
     protected int spam = 0;
@@ -93,16 +99,29 @@ public class SelectiveStemmingTool extends CmdLineTool {
         if (catB && (Collection.CW09B.equals(collection) || Collection.CW12B.equals(collection)))
             evalDirectory = "catb_evals";
 
-        List<InfoNeed> needs = new ArrayList<>();
-        Map<String, Evaluator> evaluatorMap = new HashMap<>();
-        Map<String, QuerySelector> querySelectorMap = new HashMap<>();
+        //Map<String, Evaluator> evaluatorMap = new HashMap<>();
+        Map<Tag, QuerySelector> querySelectorMap = new HashMap<>();
 
         final String[] tagsArr = tags.split("_");
         if(tagsArr.length!=2) return;
-        baseline=tagsArr[0];
 
         Set<String> modelIntersection = new HashSet<>();
 
+        Map<Tag, Evaluator> evaluatorMap = new HashMap<>();
+
+        for (int i = 0; i < tagsArr.length; i++) {
+            String tag = tagsArr[i];
+            final Evaluator evaluator = new Evaluator(dataSet, tag, measure, "all", evalDirectory, op);
+            evaluatorMap.put(Tag.tag(tag), evaluator);
+
+            if (i == 0)
+                modelIntersection.addAll(evaluator.getModelSet());
+            else
+                modelIntersection.retainAll(evaluator.getModelSet());
+            querySelectorMap.put(Tag.tag(tag), new QuerySelector(dataSet, tag));
+        }
+
+       /*
         for (int i = 0; i < tagsArr.length; i++) {
             String tag = tagsArr[i];
             final Evaluator evaluator = new Evaluator(dataSet, tag, measure, "all", evalDirectory, op);
@@ -116,50 +135,49 @@ public class SelectiveStemmingTool extends CmdLineTool {
             querySelectorMap.put(tag, new QuerySelector(dataSet, tag));
         }
 
+        */
+
+        SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
+
+
         Map<String, double[]> baselines = new HashMap<>();
 
         for (String model : modelIntersection) {
+            List<InfoNeed> needs;
+            if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
+            else needs=systemEvaluator.getNeeds();
 
-            double[] baseline = new double[needs.size()];
-            double bestTagScore=Double.NEGATIVE_INFINITY;
-            String bestTag="";
-            //Finds the best tag to construct baseline
-            for(String tag:tagsArr){
-                if (evaluatorMap.get(tag).averagePerModel(model).score>bestTagScore) {
-                    bestTagScore = evaluatorMap.get(tag).averagePerModel(model).score;
-                    bestTag = tag;
-                }
-            }
-            for (int i = 0; i < needs.size(); i++)
-                baseline[i] = evaluatorMap.get(bestTag).score(needs.get(i), model);
-
-            baselines.put(model, baseline);
+            Solution s = systemEvaluator.oracleMaxAsSolution(needs,model);
+            baselines.put(model, s.scores());
         }
 
 
         for (String model : modelIntersection) {
+            List<InfoNeed> needs;
+            if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
+            else needs=systemEvaluator.getNeeds();
 
-            List<ModelScore> list = new ArrayList<>();
+            List<SystemScore> list = new ArrayList<>();
 
             for (String tag : tagsArr) {
-                final Evaluator evaluator = evaluatorMap.get(tag);
-                ModelScore modelScore = evaluator.averagePerModel(model);
-                list.add(new ModelScore(tag, modelScore.score));
+                final Evaluator evaluator = evaluatorMap.get(Tag.tag(tag));
+                ModelScore modelScore = evaluator.averagePerModel(model,needs);
+                list.add(new SystemScore(tag, modelScore.score));
             }
 
             System.err.println(String.format("%s\t",model)); //print part1
             Solution solution = selectiveStemmingSolution(model,evaluatorMap,querySelectorMap,needs,tagsArr);
             if (tTest.pairedTTest(baselines.get(model), solution.scores(), 0.05))
-                list.add(new ModelScore("SelectiveStemming" + "*", solution.getMean()));
+                list.add(new SystemScore("SelectiveStemming" + "*", solution.getMean()));
             else
-                list.add(new ModelScore("SelectiveStemming", solution.getMean()));
+                list.add(new SystemScore("SelectiveStemming", solution.getMean()));
 
             Collections.sort(list);
 
             System.out.print(model + "(" + needs.size() + ")\t");
 
-            for (ModelScore modelScore : list)
-                System.out.print(modelScore.model + "(" + String.format("%.5f", modelScore.score) + ")\t");
+            for (SystemScore systemScore : list)
+                System.out.print(systemScore.system + "(" + String.format("%.5f", systemScore.score) + ")\t");
 
             System.out.println();
 
@@ -169,42 +187,16 @@ public class SelectiveStemmingTool extends CmdLineTool {
         // if (!collection.equals(GOV2)) fields += ",anchor";
 
         for (String model : modelIntersection) {
+            List<InfoNeed> needs;
+            if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
+            else needs=systemEvaluator.getNeeds();
 
-            List<Prediction> list = new ArrayList<>(needs.size());
+            Solution solution = systemEvaluator.oracleMaxAsSolution(needs,model);
 
-            Map<String, Integer> countMap = new HashMap<>();
-            for (String tag : tagsArr) {
-                countMap.put(tag, 0);
-            }
+            Map<String,List<Prediction>> tagPredictions = solution.list.stream().collect(Collectors.groupingBy(s -> s.predictedModel));
+            Map<String,Integer> countMap= tagPredictions.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,e->e.getValue().size()));
 
-            for (InfoNeed need : needs) {
 
-                double max = Double.NEGATIVE_INFINITY;
-
-                String bestTag = null;
-
-                for (String tag : tagsArr) {
-
-                    final Evaluator evaluator = evaluatorMap.get(tag);
-
-                    double score = evaluator.score(need, model);
-                    if (score > max) {
-                        max = score;
-                        bestTag = tag;
-                    }
-                }
-
-                if (null == bestTag) throw new RuntimeException("bestField is null!");
-
-                Prediction prediction = new Prediction(need, bestTag, max);
-                list.add(prediction);
-
-                Integer count = countMap.get(bestTag);
-                countMap.put(bestTag, count + 1);
-
-            }
-
-            Solution solution = new Solution(list, -1);
             System.out.print(String.format("%s(%.5f) \t", model, solution.getMean()));
 
             countMap = sortByValue(countMap);
@@ -215,7 +207,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
         }
     }
 
-    private Solution selectiveStemmingSolution(String model,Map<String, Evaluator> evaluatorMap,Map<String,
+    private Solution selectiveStemmingSolution(String model,Map<Tag, Evaluator> evaluatorMap,Map<Tag,
             QuerySelector> querySelectorMap,List<InfoNeed> needs, String[] tagsArr){
 
         List<Prediction> list = new ArrayList<>(needs.size());
@@ -224,7 +216,11 @@ public class SelectiveStemmingTool extends CmdLineTool {
             String predictedTag;
             Map<String,ArrayList<TermStats>> tagTermStatsMap = new LinkedHashMap<>();
             for (String tag : tagsArr) {
-                QuerySelector selector = querySelectorMap.get(tag);
+                QuerySelector selector = querySelectorMap.get(Tag.tag(tag));
+
+                SelectionMethods.TermTFDF.maxDF=selector.numberOfDocuments;
+                SelectionMethods.TermTFDF.maxTF=selector.numberOfTokens;
+
                 Map<String, TermStats> statsMap = selector.termStatisticsMap;
                // Evaluator evaluator = evaluatorMap.get(tag);
                 String query = need.query();
@@ -250,7 +246,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
             }
             System.err.print(String.format("%s\t%s\t",need.id(),need.query())); //print part2
             predictedTag = SelectionMethods.getPredictedTag(selection,tagTermStatsMap,tagsArr); ///print part3 will done inside
-            double predictedScore = evaluatorMap.get(predictedTag).score(need, model);
+            double predictedScore = evaluatorMap.get(Tag.tag(predictedTag)).score(need, model);
             Prediction prediction = new Prediction(need, predictedTag, predictedScore);
             list.add(prediction);
             System.err.println(String.format("%s\t%f\t%s\t", predictedTag, predictedScore, selection)); //print part4
