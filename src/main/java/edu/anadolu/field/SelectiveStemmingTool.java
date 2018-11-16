@@ -121,34 +121,28 @@ public class SelectiveStemmingTool extends CmdLineTool {
             querySelectorMap.put(Tag.tag(tag), new QuerySelector(dataSet, tag));
         }
 
-       /*
-        for (int i = 0; i < tagsArr.length; i++) {
-            String tag = tagsArr[i];
-            final Evaluator evaluator = new Evaluator(dataSet, tag, measure, "all", evalDirectory, op);
-            evaluatorMap.put(tag, evaluator);
-            needs = evaluator.getNeeds();
-
-            if (i == 0)
-                modelIntersection.addAll(evaluator.getModelSet());
-            else
-                modelIntersection.retainAll(evaluator.getModelSet());
-            querySelectorMap.put(tag, new QuerySelector(dataSet, tag));
-        }
-
-        */
 
         SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
-
-
         Map<String, double[]> baselines = new HashMap<>();
+        Map<String, String> baselinesTag = new HashMap<>();
 
         for (String model : modelIntersection) {
             List<InfoNeed> needs;
             if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
             else needs=systemEvaluator.getNeeds();
 
-            Solution s = systemEvaluator.oracleMaxAsSolution(needs,model);
-            baselines.put(model, s.scores());
+            double bestTagScore=Double.NEGATIVE_INFINITY;
+            String bestTag="";
+            for(String tag:tagsArr){
+                if (evaluatorMap.get(Tag.tag(tag)).averagePerModel(model,needs).score>bestTagScore) {
+                    bestTagScore = evaluatorMap.get(Tag.tag(tag)).averagePerModel(model,needs).score;
+                    bestTag = tag;
+                }
+            }
+
+            double[] s = evaluatorMap.get(Tag.tag(bestTag)).scoreArray(model,needs);
+            baselines.put(model, s);
+            baselinesTag.put(model,bestTag);
         }
 
 
@@ -174,7 +168,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
 
             Collections.sort(list);
 
-            System.out.print(model + "(" + needs.size() + ")\t");
+            System.out.print(model + "(" + needs.size() + ")\tBaseline: "+baselinesTag.get(model)+"\t");
 
             for (SystemScore systemScore : list)
                 System.out.print(systemScore.system + "(" + String.format("%.5f", systemScore.score) + ")\t");
