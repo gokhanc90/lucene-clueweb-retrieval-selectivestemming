@@ -50,10 +50,10 @@ public class SelectiveStemmingTool extends CmdLineTool {
     protected String tags = "NoStemTurkish_Zemberek";
 
     @Option(name = "-selection", metaVar = "[MSTTF|MSTDF|TFOrder|DFOrder|KendallTauTFOrder|KendallTauDFOrder|MSTTFBinning|MSTDFBinning" +
-            "TFOrderBinning|DFOrderBinning|KendallTauTFOrderBinning|KendallTauDFOrderBinning]", required = true, usage = "Selection Tag")
+            "TFOrderBinning|DFOrderBinning|KendallTauTFOrderBinning|KendallTauDFOrderBinning|CosineSim|Features]", required = true, usage = "Selection Tag")
     protected String selection;
 
-    @Option(name = "-KTT", required = false, usage = "Kendall Tau correlation threshold [-1...1]")
+    @Option(name = "-KTT", required = false, usage = "Correlation threshold [-1...1]")
     protected double ktt = 0.99;
 
     @Option(name = "-binDF", required = false, usage = "Number of bins for DF. Default: 1000 ")
@@ -62,6 +62,8 @@ public class SelectiveStemmingTool extends CmdLineTool {
     @Option(name = "-residualNeeds", required = false, usage = "Removes ALL_SAME and ALL_ZERO")
     protected boolean residualNeeds = false;
 
+    @Option(name = "-excludeOneTermNeeds", required = false, usage = "Removes ALL_SAME and ALL_ZERO")
+    protected boolean excludedOTN = false;
 
     @Option(name = "-spam", metaVar = "[10|15|...|85|90]", required = false, usage = "Non-negative integer spam threshold")
     protected int spam = 0;
@@ -89,7 +91,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
             return;
         }
 
-        SelectionMethods.KendallTauThreshold=ktt;
+        SelectionMethods.CorrThreshold=ktt;
         SelectionMethods.TermTFDF.NumberOfBIN=binDF;
 
         DataSet dataSet = CollectionFactory.dataset(collection, tfd_home);
@@ -131,6 +133,8 @@ public class SelectiveStemmingTool extends CmdLineTool {
             if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
             else needs=systemEvaluator.getNeeds();
 
+            if(excludedOTN) needs = systemEvaluator.excludeOneTermNeeds(needs);
+
             double bestTagScore=Double.NEGATIVE_INFINITY;
             String bestTag="";
             for(String tag:tagsArr){
@@ -150,6 +154,8 @@ public class SelectiveStemmingTool extends CmdLineTool {
             List<InfoNeed> needs;
             if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
             else needs=systemEvaluator.getNeeds();
+
+            if(excludedOTN) needs = systemEvaluator.excludeOneTermNeeds(needs);
 
             List<SystemScore> list = new ArrayList<>();
 
@@ -185,6 +191,8 @@ public class SelectiveStemmingTool extends CmdLineTool {
             if (residualNeeds) needs=systemEvaluator.residualNeeds(model);
             else needs=systemEvaluator.getNeeds();
 
+            if(excludedOTN) needs = systemEvaluator.excludeOneTermNeeds(needs);
+
             Solution solution = systemEvaluator.oracleMaxAsSolution(needs,model);
 
             Map<String,List<Prediction>> tagPredictions = solution.list.stream().collect(Collectors.groupingBy(s -> s.predictedModel));
@@ -197,6 +205,8 @@ public class SelectiveStemmingTool extends CmdLineTool {
             for (Map.Entry<String, Integer> entry : countMap.entrySet())
                 System.out.print(entry.getKey() + "(" + entry.getValue() + ")\t");
 
+            System.err.println(model+" "+selection);
+            solution.list.stream().forEach(p->System.err.println(p.predictedModel));
             System.out.println();
         }
     }

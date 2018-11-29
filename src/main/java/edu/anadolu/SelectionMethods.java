@@ -1,19 +1,22 @@
 package edu.anadolu;
 
+import edu.anadolu.qpp.Aggregate;
 import edu.anadolu.stats.TermStats;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * If a change is occurred either order or specific term due to the freq. , select NoStem.
  */
 public class SelectionMethods {
-    public static double KendallTauThreshold=0.99; // set by selective stemming tool
+    public static double CorrThreshold=0.99; // set by selective stemming tool
 
     public enum SelectionTag {
 
         MSTTF, MSTDF, LSTDF, TFOrder, DFOrder, KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
-        TFOrderBinning, DFOrderBinning, KendallTauTFOrderBinning, KendallTauDFOrderBinning;
+        TFOrderBinning, DFOrderBinning, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, Features;
 
         public static SelectionTag tag(String selectionTag) {
            return valueOf(selectionTag);
@@ -22,8 +25,8 @@ public class SelectionMethods {
 
     public static class TermTFDF {
         public static int NumberOfBIN = 10; // set by selective stemming tool
-        public static long maxDF=503775617; // set by selective stemming tool
-        public static long maxTF=Integer.MAX_VALUE; //
+        public static long maxDF; // set by selective stemming tool
+        public static long maxTF; //
 
 
         private int indexID;
@@ -101,6 +104,8 @@ public class SelectionMethods {
             case DFOrderBinning: return DFOrderBinning(tagTermTermStats, tagsArr);
             case KendallTauTFOrderBinning: return KendallTauTFOrderBinning(tagTermTermStats, tagsArr);
             case KendallTauDFOrderBinning: return KendallTauDFOrderBinning(tagTermTermStats, tagsArr);
+            case CosineSim: return CosineSim(tagTermTermStats, tagsArr);
+            case Features: return Features(tagTermTermStats, tagsArr);
 
             default: throw new AssertionError(SelectionMethods.class);
         }
@@ -191,7 +196,7 @@ public class SelectionMethods {
 //        }
 //        else {
             double val;
-            if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
+            if((val=KendallVal(listTermTag1,listTermTag2,1))-CorrThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
@@ -230,7 +235,7 @@ public class SelectionMethods {
 //        }
 //        else {
             double val;
-            if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
+            if((val=KendallVal(listTermTag1,listTermTag2,1))-CorrThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
@@ -344,7 +349,7 @@ public class SelectionMethods {
 //        }
 //        else {
             double val;
-            if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
+            if((val=KendallVal(listTermTag1,listTermTag2,1))-CorrThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
@@ -383,7 +388,7 @@ public class SelectionMethods {
 //        }
 //        else {
             double val;
-            if((val=KendallVal(listTermTag1,listTermTag2,1))-KendallTauThreshold >=0 ){
+            if((val=KendallVal(listTermTag1,listTermTag2,1))-CorrThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var Deigisim yok KStem
             }
@@ -577,10 +582,140 @@ public class SelectionMethods {
             return tagsArr[0]; //Nostem
 
         }
-        System.err.print(String.format("%s\t","NotChanged")); //print part1
+        System.err.print(String.format("%s\t", "NotChanged")); //print part1
         return tagsArr[1];
 
     }
+
+    private static String CosineSim(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setDF(tsList.get(i).docFreq());
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setDF(tsList.get(i).docFreq());
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        double[] v1 = new double[2*listTermTag1.size()];
+        double[] v2 = new double[2*listTermTag2.size()];
+
+        double tfSum1=0.0,tfSum2=0.0,dfSum1=0.0,dfSum2=0.0;
+
+        for(int i=0;i<listTermTag1.size();i++){
+            v1[i]=listTermTag1.get(i).getDF()/(double)TermTFDF.maxDF;
+            dfSum1+=v1[i];
+            v1[i+1]=listTermTag1.get(i).getTF()/(double)TermTFDF.maxTF;
+            tfSum1+=v1[i+1];
+        }
+
+        for(int i=0;i<listTermTag2.size();i++){
+            v2[i]=listTermTag2.get(i).getDF()/(double)TermTFDF.maxDF;
+            dfSum2+=v2[i];
+            v2[i+1]=listTermTag2.get(i).getTF()/(double)TermTFDF.maxTF;
+            tfSum2+=v2[i+1];
+        }
+
+        double[] v11 = {dfSum1,tfSum1};
+        double[] v22 = {dfSum2,tfSum2};
+
+        double cosine_sim = Utils.cosineSim(v11, v22);
+
+        System.err.print(Arrays.deepToString(ArrayUtils.toObject(v11))); //print part1
+        System.err.print(Arrays.deepToString(ArrayUtils.toObject(v22))); //print part1
+
+
+        if(cosine_sim<CorrThreshold){
+            System.err.print(String.format("\t%s\t%f\t","NoStem: cosine_sim",cosine_sim)); //print part1
+            return tagsArr[0]; //NoStem
+        }
+        else{
+            System.err.print(String.format("\t%s\t%f\t","KStem: cosine_sim",cosine_sim)); //print part1
+            return tagsArr[1]; //Stem
+        }
+
+    }
+
+    private static String Features(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setDF(tsList.get(i).docFreq());
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setDF(tsList.get(i).docFreq());
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        long v1DF[] = new long[listTermTag1.size()];
+        long v2DF[] = new long[listTermTag2.size()];
+        long v1TF[] = new long[listTermTag1.size()];
+        long v2TF[] = new long[listTermTag2.size()];
+
+
+        long tfSum1=0,tfSum2=0,dfSum1=0,dfSum2=0;
+
+        for(int i=0;i<listTermTag1.size();i++){
+            v1DF[i]=listTermTag1.get(i).getDF();
+            dfSum1+=v1DF[i];
+
+            v1TF[i]=listTermTag1.get(i).getTF();
+            tfSum1+=v1TF[i];
+        }
+
+        for(int i=0;i<listTermTag2.size();i++){
+            v2DF[i]=listTermTag2.get(i).getDF();
+            dfSum2+=v2DF[i];
+
+            v2TF[i]=listTermTag2.get(i).getTF();
+            tfSum2+=v2TF[i];
+        }
+
+        double v1IDF[] = Arrays.stream(v1DF).mapToDouble(d->Utils.idf(TermTFDF.maxDF,d)).toArray();
+        double v2IDF[] = Arrays.stream(v2DF).mapToDouble(d->Utils.idf(TermTFDF.maxDF,d)).toArray();
+
+
+        int queryLength = listTermTag1.size();
+        double cosine_sim = Utils.cosineSim(v1IDF, v2IDF);
+        double angular_sim = Utils.angularSim(v1IDF, v2IDF);
+        double avgv1IDF = new Aggregate.Average().aggregate(v1IDF);
+        double avgv2IDF = new Aggregate.Average().aggregate(v2IDF);
+
+        double harmv1IDF = new Aggregate.HarmonicMean().aggregate(v1IDF);
+        double harmv2IDF = new Aggregate.HarmonicMean().aggregate(v2IDF);
+
+        double covv1IDF = new Aggregate.CoVar().aggregate(v1IDF);
+        double covv2IDF = new Aggregate.CoVar().aggregate(v2IDF);
+
+        double varv1IDF = new Aggregate.Variance().aggregate(v1IDF);
+        double varv2IDF = new Aggregate.Variance().aggregate(v2IDF);
+
+        System.err.print(String.format("\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t",
+                queryLength,cosine_sim,angular_sim,avgv1IDF,avgv2IDF,harmv1IDF,harmv2IDF,covv1IDF,covv2IDF,varv1IDF,varv2IDF)); //print part1
+        return tagsArr[0];
+    }
+
+
+
 
     private static double KendallVal(ArrayList<TermTFDF> l1, ArrayList<TermTFDF> l2, int opt){
         double[] v1 = new double[l1.size()];

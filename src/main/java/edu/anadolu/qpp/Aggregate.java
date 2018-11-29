@@ -1,6 +1,7 @@
 package edu.anadolu.qpp;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.util.FastMath;
 
 /**
  * Specificity predictors are calculated for each query term.
@@ -143,6 +144,58 @@ public interface Aggregate {
         @Override
         public String toString() {
             return "var";
+        }
+    }
+
+    class GeometricMean implements Aggregate {
+
+        @Override
+        public double aggregate(double[] values) {
+            return StatUtils.geometricMean(values);
+        }
+
+        @Override
+        public String toString() {
+            return "geoMean";
+        }
+    }
+
+    class HarmonicMean implements Aggregate {
+
+        @Override
+        public double aggregate(double[] values) {
+            double sum=0.0;
+            for(double d:values) sum+=1/d;
+            return values.length/sum;
+        }
+
+        @Override
+        public String toString() {
+            return "harmonicMean";
+        }
+    }
+
+    class CoVar implements Aggregate {
+
+        @Override
+        public double aggregate(double[] values) {
+            double std = FastMath.sqrt(new Variance().aggregate(values));
+            double mean = new Average().aggregate(values);
+            return std/mean;
+        }
+
+
+        public double aggregateWithStd(double std,double mean) {
+            return std/mean;
+        }
+
+        public double aggregateWtihVariance(double variance,double mean) {
+            return FastMath.sqrt(variance)/mean;
+        }
+
+        @Override
+        public String toString() {
+            return "coefficient of variation";
         }
     }
 }
