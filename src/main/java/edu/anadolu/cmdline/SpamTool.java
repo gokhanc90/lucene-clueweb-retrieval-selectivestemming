@@ -46,12 +46,15 @@ public final class SpamTool extends CmdLineTool {
         return "Following properties must be defined in config.properties for " + CLI.CMD + " " + getName() + " paths.spam paths.docs files.ids files.spam";
     }
 
+    public static String CW09_spam_link;
+    public static String CW12_spam_link;
+
     static HttpSolrClient getSpamSolr(Collection collection) {
 
         if (Collection.CW09A.equals(collection) || Collection.CW09B.equals(collection) || Collection.MQ09.equals(collection) || Collection.MQE1.equals(collection)) {
-            return new HttpSolrClient.Builder().withBaseSolrUrl("http://irra-micro.nas.ceng.local:8983/solr/spam09A").build();
+            return new HttpSolrClient.Builder().withBaseSolrUrl(CW09_spam_link).build();
         } else if (Collection.CW12A.equals(collection) || Collection.CW12B.equals(collection))
-            return new HttpSolrClient.Builder().withBaseSolrUrl("http://irra-micro.nas.ceng.local:8983/solr/spam12A").build();
+            return new HttpSolrClient.Builder().withBaseSolrUrl("CW12_spam_link").build();
         else {
             System.out.println("spam filtering is only applicable to ClueWeb09 and ClueWeb12 collections!");
             return null;
@@ -64,6 +67,8 @@ public final class SpamTool extends CmdLineTool {
         if (parseArguments(props) == -1) return;
 
         final String tfd_home = props.getProperty("tfd.home");
+        CW09_spam_link = props.getProperty("link.spam.CW09");
+        CW12_spam_link = props.getProperty("link.spam.CW12");
 
         if (tfd_home == null) {
             System.out.println(getHelp());
