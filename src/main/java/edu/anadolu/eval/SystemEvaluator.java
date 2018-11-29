@@ -9,9 +9,11 @@ import edu.anadolu.datasets.DataSet;
 import edu.anadolu.knn.Measure;
 import edu.anadolu.knn.Prediction;
 import edu.anadolu.knn.Solution;
+import edu.anadolu.qpp.Aggregate;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.clueweb09.InfoNeed;
 
 import java.io.DataInputStream;
@@ -33,7 +35,8 @@ public class SystemEvaluator{
     private final Map<String,Set<InfoNeed>> modelAllSameMap = new HashMap<>();
 
     private Map<InfoNeed, Map<String,List<SystemScore>>> performanceMap = null; //InfoNeed, DPH {NoStem0.924,Stem0.854}
-    private Map<InfoNeed, Map<String,Double>> varianceMap = null;  ////InfoNeed, DPH variance
+    private Map<InfoNeed, Map<String,Double>> varianceMap = null;  //InfoNeed, DPH variance
+    private Map<InfoNeed, Map<String,Double>> avgMap = null;  //InfoNeed, DPH avg
     public Map<String,Map<String, List<InfoNeed>>> bestModelSystemMap;
 
     private final NormalDistribution normalDistribution = new NormalDistribution();
@@ -73,10 +76,12 @@ public class SystemEvaluator{
         for (InfoNeed need : needs) {
             Map<String,List<SystemScore>> modelSytemScoreMap = new HashMap<>();
             Map<String,Double> modelVarianceMap = new HashMap<>();
+            Map<String,Double> modelAvgMap = new HashMap<>();
             for(String model: modelIntersection) {
                 List<SystemScore> list = systemScoreList(need,model);
                 modelSytemScoreMap.put(model,list);
                 modelVarianceMap.put(model,variance(list));
+                modelAvgMap.put(model,avg(list));
             }
             performanceMap.put(need, modelSytemScoreMap);
             varianceMap.put(need, modelVarianceMap);
@@ -84,6 +89,17 @@ public class SystemEvaluator{
 
         this.performanceMap = Collections.unmodifiableMap(performanceMap);
         this.varianceMap = Collections.unmodifiableMap(varianceMap);
+    }
+
+
+    public static double avg(List<SystemScore> list) {
+
+        SummaryStatistics summaryStatistics = new SummaryStatistics();
+
+        for (SystemScore systemScore : list) {
+            summaryStatistics.addValue(systemScore.score);
+        }
+        return summaryStatistics.getMean();
     }
 
     private Double variance(List<SystemScore> list) {
@@ -290,7 +306,9 @@ public class SystemEvaluator{
             System.out.printf("Query\tSystem\t%s_%d\tCOV\n", metric, k);
             for(Prediction p: s.list){
                 double variance = varianceMap.get(p.testQuery).get(s.model);
-                System.out.printf("%d\t%s\t%.4f\t%.4f\n", p.testQuery.id(), p.predictedModel, p.predictedScore, variance);
+                double avg = avgMap.get(p.testQuery).get(s.model);
+                double cov =  new Aggregate.CoVar().aggregateWtihVariance(variance, avg);
+                System.out.printf("%d\t%s\t%.4f\t%.4f\n", p.testQuery.id(), p.predictedModel, p.predictedScore,cov);
             }
             System.out.printf("Average:\t%.4f\n", s.getMean());
         }
@@ -303,6 +321,17 @@ public class SystemEvaluator{
         residualNeeds.removeAll(modelAllZeroMap.get(model));
         return residualNeeds;
     }
+
+    public List<InfoNeed> excludeOneTermNeeds(List<InfoNeed> needs) {
+
+        List<InfoNeed> excludedOTN = new ArrayList<>();
+        for(InfoNeed n: needs){
+            if(n.termCount()==1) continue;
+            excludedOTN.add(n);
+        }
+        return excludedOTN;
+    }
+
     private Multiset<String> facet(String model) {
 
         Multiset<String> multiset = HashMultiset.create();
