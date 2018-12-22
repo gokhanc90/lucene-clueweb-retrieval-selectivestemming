@@ -49,12 +49,12 @@ public final class SpamTool extends CmdLineTool {
     public static String CW09_spam_link;
     public static String CW12_spam_link;
 
-    static HttpSolrClient getSpamSolr(Collection collection) {
+    public static HttpSolrClient getSpamSolr(Collection collection) {
 
         if (Collection.CW09A.equals(collection) || Collection.CW09B.equals(collection) || Collection.MQ09.equals(collection) || Collection.MQE1.equals(collection)) {
             return new HttpSolrClient.Builder().withBaseSolrUrl(CW09_spam_link).build();
         } else if (Collection.CW12A.equals(collection) || Collection.CW12B.equals(collection))
-            return new HttpSolrClient.Builder().withBaseSolrUrl("CW12_spam_link").build();
+            return new HttpSolrClient.Builder().withBaseSolrUrl(CW12_spam_link).build();
         else {
             System.out.println("spam filtering is only applicable to ClueWeb09 and ClueWeb12 collections!");
             return null;
@@ -222,7 +222,7 @@ public final class SpamTool extends CmdLineTool {
      */
     public static int percentile(HttpSolrClient solr, String docID) throws IOException, SolrServerException {
 
-        SolrQuery query = new SolrQuery(docID).setFields("percentile");
+        SolrQuery query = new SolrQuery("id:"+docID).setFields("percentile");
         query.set(HEADER_ECHO_PARAMS, CommonParams.EchoParamStyle.NONE.toString());
         query.set(OMIT_HEADER, true);
         SolrDocumentList resp = solr.query(query).getResults();
