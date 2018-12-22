@@ -72,6 +72,7 @@ public class SystemEvaluator{
 
         Map<InfoNeed, Map<String,List<SystemScore>>> performanceMap = new HashedMap<>();
         Map<InfoNeed, Map<String,Double>> varianceMap =  new HashedMap<>();
+        Map<InfoNeed, Map<String,Double>> averageMap =  new HashedMap<>();
 
         for (InfoNeed need : needs) {
             Map<String,List<SystemScore>> modelSytemScoreMap = new HashMap<>();
@@ -85,10 +86,13 @@ public class SystemEvaluator{
             }
             performanceMap.put(need, modelSytemScoreMap);
             varianceMap.put(need, modelVarianceMap);
+            averageMap.put(need,modelAvgMap);
+
         }
 
         this.performanceMap = Collections.unmodifiableMap(performanceMap);
         this.varianceMap = Collections.unmodifiableMap(varianceMap);
+        this.avgMap = Collections.unmodifiableMap(averageMap);
     }
 
 
