@@ -15,7 +15,7 @@ public class SelectionMethods {
 
     public enum SelectionTag {
 
-        MSTTF, MSTDF, LSTDF, TFOrder, DFOrder, KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
+        MSTTF, MSTDF, LSTDF, LSTTF, TFOrder, DFOrder, KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
         TFOrderBinning, DFOrderBinning, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, Features;
 
         public static SelectionTag tag(String selectionTag) {
@@ -86,14 +86,15 @@ public class SelectionMethods {
     }
 
     public static String getPredictedTag(String selectionTag,Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr){
-        if(tagTermTermStats.get(tagsArr[0]).size() == 1){
+/*        if(tagTermTermStats.get(tagsArr[0]).size() == 1){
             System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[0]; //One-term Stem
-        }
+        }*/
         switch (SelectionTag.tag(selectionTag)) {
             case MSTTF: return MSTTermFreq(tagTermTermStats,tagsArr);
             case MSTDF: return MSTDocFreq(tagTermTermStats, tagsArr);
             case LSTDF: return LSTDocFreq(tagTermTermStats, tagsArr);
+            case LSTTF: return LSTTermFreq(tagTermTermStats, tagsArr);
             case TFOrder: return TFOrder(tagTermTermStats, tagsArr);
             case DFOrder: return DFOrder(tagTermTermStats, tagsArr);
             case KendallTauTFOrder: return KendallTauTFOrder(tagTermTermStats, tagsArr);
@@ -539,6 +540,50 @@ public class SelectionMethods {
 
     }
 
+    private static String LSTTermFreq(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+//        System.out.print(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            listTermTag1.add(termTFDF);
+//            System.out.print(" "+tsList.get(i).term().utf8ToString());
+        }
+//        System.out.println();
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+//        System.out.print(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            listTermTag2.add(termTFDF);
+//            System.out.print(" "+tsList.get(i).term().utf8ToString());
+        }
+//        System.out.println();
+//        System.out.println("======= Before ======");
+//        listTermTag1.stream().forEach(t -> System.out.println(t.indexID + " " + t.getTF()));
+//        listTermTag2.stream().forEach(t -> System.out.println(t.indexID + " " + t.getTF()));
+
+        listTermTag1.sort((t1, t2) -> Long.compare(t2.getTF(), t1.getTF()));
+        listTermTag2.sort((t1, t2) -> Long.compare(t2.getTF(), t1.getTF()));
+
+//        System.out.println("======= Afer ======");
+//        listTermTag1.stream().forEach(t -> System.out.println(t.indexID + " " + t.getTF()));
+//        listTermTag2.stream().forEach(t -> System.out.println(t.indexID + " " + t.getTF()));
+
+        if (listTermTag1.get(0).getIndexID() != listTermTag2.get(0).getIndexID()) {
+            System.err.print(String.format("%s\t","Changed")); //print part1
+            return tagsArr[0]; //Nostem
+
+        }
+        System.err.print(String.format("%s\t", "NotChanged")); //print part1
+        return tagsArr[1];
+
+    }
+
     /**
      * This method returns one of the given IndexSearchers due to the changing of the most specific term in term frequency
      * If the most specific term changes in term frequency, the method returns stemmed tag
@@ -653,6 +698,64 @@ public class SelectionMethods {
         ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
         for (int i = 0; i < tsList.size(); i++) {
             TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
+        double valBinTF=KendallVal(listTermTag1,listTermTag2,1);
+
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        double valBinDF=KendallVal(listTermTag1,listTermTag2,1);
+
+        listTermTag1.sort((t1, t2) -> Long.compare(t1.getTF(), t2.getTF()));
+        listTermTag2.sort((t1, t2) -> Long.compare(t1.getTF(), t2.getTF()));
+        double valTF=KendallVal(listTermTag1,listTermTag2,1);
+
+        listTermTag1.sort((t1, t2) -> Long.compare(t1.getDF(), t2.getDF()));
+        listTermTag2.sort((t1, t2) -> Long.compare(t1.getDF(), t2.getDF()));
+        double valDF=KendallVal(listTermTag1,listTermTag2,1);
+
+
+        String MSTTF = MSTTermFreq(tagTermTermStats, tagsArr);
+        String MSTDF = MSTDocFreq(tagTermTermStats, tagsArr);
+        String LSTDF = LSTDocFreq(tagTermTermStats, tagsArr);
+        String LSTTF = LSTTermFreq(tagTermTermStats, tagsArr);
+        String TFOrder = TFOrder(tagTermTermStats, tagsArr);
+        String DFOrder = DFOrder(tagTermTermStats, tagsArr);
+        String KendallTauTFOrder = KendallTauTFOrder(tagTermTermStats, tagsArr);
+        String KendallTauDFOrder = KendallTauDFOrder(tagTermTermStats, tagsArr);
+        String MSTTFBinning = MSTTFBinning(tagTermTermStats, tagsArr);
+        String MSTDFBinning = MSTDFBinning(tagTermTermStats, tagsArr);
+        String TFOrderBinning = TFOrderBinning(tagTermTermStats, tagsArr);
+        String DFOrderBinning = DFOrderBinning(tagTermTermStats, tagsArr);
+        String KendallTauTFOrderBinning = KendallTauTFOrderBinning(tagTermTermStats, tagsArr);
+        String KendallTauDFOrderBinning = KendallTauDFOrderBinning(tagTermTermStats, tagsArr);
+        System.err.print(String.format("\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%s\t%f\t%s\t%s\t%s\t%s\t%s\t%f\t%s\t%f\t",
+                MSTTF,MSTDF,LSTDF,LSTTF,TFOrder,DFOrder,KendallTauTFOrder,valTF,KendallTauDFOrder,valDF,MSTTFBinning,MSTDFBinning,
+                TFOrderBinning,DFOrderBinning,KendallTauTFOrderBinning,valBinTF,KendallTauDFOrderBinning,valBinDF)); //print part1
+        return tagsArr[0];
+    }
+    /*
+    private static String Features(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
             termTFDF.setDF(tsList.get(i).docFreq());
             termTFDF.setTF(tsList.get(i).totalTermFreq());
             listTermTag1.add(termTFDF);
@@ -714,7 +817,7 @@ public class SelectionMethods {
         return tagsArr[0];
     }
 
-
+*/
 
 
     private static double KendallVal(ArrayList<TermTFDF> l1, ArrayList<TermTFDF> l2, int opt){
