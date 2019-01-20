@@ -142,6 +142,8 @@ public final class CLI {
 
         tools.add(new SystemEvaluatorTool());
 
+        tools.add(new CustomTool());
+
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);
         }

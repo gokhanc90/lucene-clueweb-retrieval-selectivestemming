@@ -28,7 +28,7 @@ public class CustomTool extends CmdLineTool {
      * Terrier's default values
      */
     @Option(name = "-models", required = false, usage = "term-weighting models")
-    protected String models = "BM25k1.2b0.75_DirichletLMc2500_LGDc1.0_PL2c1.0";
+    protected String models = "BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0";
 
     @Option(name = "-metric", required = false, usage = "Effectiveness measure")
     protected Measure measure = Measure.NDCG20;
@@ -41,7 +41,7 @@ public class CustomTool extends CmdLineTool {
 
 
     @Option(name = "-task", required = false, usage = "task to be executed: search or eval")
-    private String task;
+    private String task="search";
 
     @Override
     public String getShortDescription() {
