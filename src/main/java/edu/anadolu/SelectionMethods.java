@@ -4,6 +4,8 @@ import edu.anadolu.qpp.Aggregate;
 import edu.anadolu.stats.TermStats;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
+import org.apache.commons.math3.stat.inference.ChiSquareTest;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,7 +18,8 @@ public class SelectionMethods {
     public enum SelectionTag {
 
         MSTTF, MSTDF, LSTDF, LSTTF, TFOrder, DFOrder, KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
-        TFOrderBinning, DFOrderBinning, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, Features;
+        TFOrderBinning, DFOrderBinning, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, ChiSqureDF,
+        ChiSqureTF, ChiSqureTFIDF,ChiSqureAggDFTF, Features;
 
         public static SelectionTag tag(String selectionTag) {
            return valueOf(selectionTag);
@@ -105,11 +108,168 @@ public class SelectionMethods {
             case DFOrderBinning: return DFOrderBinning(tagTermTermStats, tagsArr);
             case KendallTauTFOrderBinning: return KendallTauTFOrderBinning(tagTermTermStats, tagsArr);
             case KendallTauDFOrderBinning: return KendallTauDFOrderBinning(tagTermTermStats, tagsArr);
+            case ChiSqureDF: return ChiSqureDF(tagTermTermStats, tagsArr);
+            case ChiSqureTF: return ChiSqureTF(tagTermTermStats, tagsArr);
+            case ChiSqureTFIDF: return ChiSqureTFIDF(tagTermTermStats, tagsArr);
+            case ChiSqureAggDFTF: return ChiSqureAggDFTF(tagTermTermStats, tagsArr);
             case CosineSim: return CosineSim(tagTermTermStats, tagsArr);
             case Features: return Features(tagTermTermStats, tagsArr);
 
             default: throw new AssertionError(SelectionMethods.class);
         }
+    }
+
+    private static String ChiSqureAggDFTF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        long[] obs1DF = listTermTag1.stream().mapToLong(t -> t.DF).toArray();
+        long[] obs2DF = listTermTag2.stream().mapToLong(t -> t.DF).toArray();
+
+        long[] obs1TF = listTermTag1.stream().mapToLong(t -> t.TF).toArray();
+        long[] obs2TF = listTermTag2.stream().mapToLong(t -> t.TF).toArray();
+
+        long[] obs1 =  ArrayUtils.addAll(obs1DF, obs1TF);
+        long[] obs2 =  ArrayUtils.addAll(obs2DF, obs2TF);
+
+        ChiSquareTest chi = new ChiSquareTest();
+        double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
+
+        //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
+        System.err.print(String.format("pVal: \t%f\t",pval));
+        if(isSig) return tagsArr[0]; //No_Stem
+        return tagsArr[1];
+    }
+
+    private static String ChiSqureTFIDF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        double[] obs1IDF = listTermTag1.stream().mapToDouble(t -> Utils.idf(TermTFDF.maxDF, t.DF)).toArray();
+        double[] obs2IDF = listTermTag2.stream().mapToDouble(t -> Utils.idf(TermTFDF.maxDF, t.DF)).toArray();
+
+        long[] obs1TF = listTermTag1.stream().mapToLong(t -> t.TF).toArray();
+        long[] obs2TF = listTermTag2.stream().mapToLong(t->t.TF).toArray();
+
+        long[] obs1 = new long[listTermTag1.size()];
+        for(int i=0;i<obs1.length;i++){
+            obs1[i]=Math.round(obs1IDF[i] * obs1TF[i]);
+        }
+
+        long[] obs2 = new long[listTermTag1.size()];
+        for(int i=0;i<obs2.length;i++){
+            obs2[i]=Math.round(obs2IDF[i]*obs2TF[i]);
+        }
+
+        ChiSquareTest chi = new ChiSquareTest();
+        double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
+
+        //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
+        System.err.print(String.format("pVal: \t%f\t",pval));
+        if(isSig) return tagsArr[0]; //No_Stem
+        return tagsArr[1];
+    }
+
+    private static String ChiSqureTF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.TF).toArray();
+        long[] obs2 = listTermTag2.stream().mapToLong(t->t.TF).toArray();
+
+        ChiSquareTest chi = new ChiSquareTest();
+        double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
+
+        //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
+        System.err.print(String.format("pVal: \t%f\t",pval));
+        if(isSig) return tagsArr[0]; //No_Stem
+        return tagsArr[1];
+    }
+
+    private static String ChiSqureDF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.DF).toArray();
+        long[] obs2 = listTermTag2.stream().mapToLong(t->t.DF).toArray();
+
+        ChiSquareTest chi = new ChiSquareTest();
+        double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
+
+        //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
+        System.err.print(String.format("pVal: \t%f\t",pval));
+        if(isSig) return tagsArr[0]; //No_Stem
+        return tagsArr[1];
     }
 
     private static String MSTDFBinning(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
@@ -691,6 +851,22 @@ public class SelectionMethods {
 
     }
 
+    /**
+     * Chi Square Test Features
+     * @param tagTermTermStats
+     * @param tagsArr
+     * @return
+     */
+    private static String Features(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        String ChiSqureAggDFTF = ChiSqureAggDFTF(tagTermTermStats, tagsArr);
+        String ChiSqureDF = ChiSqureDF(tagTermTermStats, tagsArr);
+        String ChiSqureTF = ChiSqureTF(tagTermTermStats, tagsArr);
+        String ChiSqureTFIDF = ChiSqureTFIDF(tagTermTermStats, tagsArr);
+        System.err.print(String.format("\t%s\t%s\t%s\t%s\t",
+                ChiSqureDF,ChiSqureTF,ChiSqureAggDFTF,ChiSqureTFIDF)); //print part1
+        return tagsArr[0];
+    }
+/*
     private static String Features(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
         ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
         ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();

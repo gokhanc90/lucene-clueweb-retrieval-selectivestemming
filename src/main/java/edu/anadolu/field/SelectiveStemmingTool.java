@@ -43,6 +43,9 @@ public class SelectiveStemmingTool extends CmdLineTool {
         return "Following properties must be defined in config.properties for " + CLI.CMD + " " + getName() + " tfd.home";
     }
 
+    @Option(name = "-models", metaVar = "all|custom as in usage", required = false, usage = "ex:BM25k1.5b0.5_PL2c3.5_LGDc1.5_DirichletLMc500")
+    protected String models = "all";
+
     @Option(name = "-metric", required = false, usage = "Effectiveness measure")
     protected Measure measure = Measure.MAP;
 
@@ -113,7 +116,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
 
         for (int i = 0; i < tagsArr.length; i++) {
             String tag = tagsArr[i];
-            final Evaluator evaluator = new Evaluator(dataSet, tag, measure, "all", evalDirectory, op);
+            final Evaluator evaluator = new Evaluator(dataSet, tag, measure, models, evalDirectory, op);
             evaluatorMap.put(Tag.tag(tag), evaluator);
 
             if (i == 0)
