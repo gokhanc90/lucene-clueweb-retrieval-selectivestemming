@@ -36,6 +36,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lucene.version>7.4.0</lucene.version>
+        <ignite.version>2.7.0</ignite.version>
     </properties>
 
     <repositories>
@@ -324,6 +325,22 @@
             <groupId>zemberek-nlp</groupId>
             <artifactId>zemberek-morphology</artifactId>
             <version>0.14.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-core</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-spring</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-indexing</artifactId>
+            <version>${ignite.version}</version>
         </dependency>
 
     </dependencies>

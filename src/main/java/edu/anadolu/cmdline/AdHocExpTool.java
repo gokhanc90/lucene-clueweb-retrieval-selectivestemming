@@ -13,6 +13,11 @@ import edu.anadolu.similarities.DFIC;
 import edu.anadolu.similarities.DFRee;
 import edu.anadolu.similarities.DLH13;
 import edu.anadolu.similarities.DPH;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.configuration.DataStorageConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -27,6 +32,8 @@ import org.clueweb09.InfoNeed;
 import org.clueweb09.tracks.Track;
 import org.kohsuke.args4j.Option;
 
+import javax.cache.expiry.CreatedExpiryPolicy;
+import javax.cache.expiry.Duration;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -68,6 +75,7 @@ public class AdHocExpTool extends CmdLineTool {
         return "Following properties must be defined in config.properties for " + CLI.CMD + " " + getName() + " paths.indexes tfd.home";
     }
 
+    Ignite ignite=null;
 
     @Override
     public void run(Properties props) throws Exception {
@@ -115,54 +123,64 @@ public class AdHocExpTool extends CmdLineTool {
         }
 
         if ("commonality".equals(task)) {
+            IgniteCache<String, LinkedList<String>> stemVariants=null;
+            try {
+                Set<String> lexicon = getLexicon(dataset, Tag.NoStem);
+                System.out.println("lexiconSize= " + lexicon.size());
+                Analyzer analyzer = Analyzers.analyzer(Tag.tag(tag));
 
-            Set<String> lexicon = getLexicon(dataset, Tag.NoStem);
-            System.out.println("lexiconSize= "+lexicon.size());
-            Analyzer analyzer = Analyzers.analyzer(Tag.tag(tag));
+                stemVariants = getEmptyMap();
 
-            HashMap<String, List<String>> stemVariants = new HashMap<>();
-            for (String term : lexicon) {
-                List<String> stems = Analyzers.getAnalyzedTokens(term, analyzer);
-                if(stems.size()!=1) continue;
-                String stem=stems.get(0);
-                {
+                for (String term : lexicon) {
+                    List<String> stems = Analyzers.getAnalyzedTokens(term, analyzer);
+                    if (stems.size() != 1) continue;
+                    String stem = stems.get(0);
+
                     if (stemVariants.containsKey(stem)) {
-                        List variants = stemVariants.get(stem);
+                        LinkedList<String> variants = stemVariants.get(stem);
                         variants.add(term);
                         stemVariants.put(stem, variants);
                     } else {
-                        List variants = new ArrayList<>();
+                        LinkedList<String> variants = new LinkedList<>();
                         variants.add(term);
                         stemVariants.put(stem, variants);
                     }
+
                 }
-            }
-            System.out.println("Stem_Variants map is created");
-            lexicon.clear();
-            QuerySelector selector = new QuerySelector(dataset, Tag.NoStem.toString());
+                System.out.println("Stem_Variants map is created");
+                lexicon.clear();
+                QuerySelector selector = new QuerySelector(dataset, Tag.NoStem.toString());
 
-            for(InfoNeed need:selector.allQueries){
-
-                StringBuilder br = new StringBuilder();
-                for(String t:need.distinctSet){
-                    String keyTerm= Analyzers.getAnalyzedToken(t, analyzer);
-                    if(!stemVariants.containsKey(keyTerm)){
-                        br.append(keyTerm+"={}\t");
+                System.out.println("Query and term commonality");
+                for (InfoNeed need : selector.allQueries) {
+                    StringBuilder br = new StringBuilder();
+                    for (String t : need.distinctSet) {
+                        String keyTerm = Analyzers.getAnalyzedToken(t, analyzer);
+                        if (!stemVariants.containsKey(keyTerm)) {
+                            br.append(0 + "\t");
+                            continue;
+                        }
+                        int variantsSize = stemVariants.get(keyTerm).size();
+                        br.append(variantsSize + "\t");
+                    }
+                    System.out.println(need.id() + "\t" + need.query() + "\t" + br.toString());
+                }
+                System.out.println("Terms and variants");
+                for (String t : selector.loadTermStatsMap().keySet()) {
+                    StringBuilder br = new StringBuilder();
+                    String keyTerm = Analyzers.getAnalyzedToken(t, analyzer);
+                    if (!stemVariants.containsKey(keyTerm)) {
+                        br.append(keyTerm + "={}\t");
                         continue;
                     }
-                    String variantsPretty=keyTerm+"="+stemVariants.get(keyTerm).stream().collect(Collectors.joining(";","{","}"));
-                    br.append(variantsPretty+"\t");
+                    String variantsPretty = keyTerm + "=" + stemVariants.get(keyTerm).stream().collect(Collectors.joining(";", "{", "}"));
+                    br.append(variantsPretty + "\t");
                 }
-                for(String t:need.distinctSet){
-                    String keyTerm= Analyzers.getAnalyzedToken(t, analyzer);
-                    if(!stemVariants.containsKey(keyTerm)){
-                        br.append(0+"\t");
-                        continue;
-                    }
-                    int variantsSize=stemVariants.get(keyTerm).size();
-                    br.append(variantsSize + "\t");
-                }
-                System.out.println(need.id() + "\t" + need.query() + "\t" + br.toString());
+            }catch (Exception e){
+                e.printStackTrace();
+            }finally {
+                if(stemVariants!=null)stemVariants.close();
+                if(ignite!=null)ignite.close();
             }
         }
 
@@ -196,6 +214,32 @@ public class AdHocExpTool extends CmdLineTool {
         }
         return null;
         //throw new Exception(tag +" not found in dataset:"+dataSet.toString());
+    }
+
+    public IgniteCache<String, LinkedList<String>> getEmptyMap(){
+        IgniteConfiguration cfg = new IgniteConfiguration();
+
+        DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+        storageCfg.getDefaultDataRegionConfiguration().setMaxSize(20L * 1024 * 1024 * 1024);//20GB
+        storageCfg.getDefaultDataRegionConfiguration().setPersistenceEnabled(true); //use disk
+        cfg.setDataStorageConfiguration(storageCfg);
+
+
+        IgniteCache<String, LinkedList<String>> cache=null;
+        try {
+            ignite = Ignition.start(cfg);
+            ignite.cluster().active(true);
+
+
+            ignite.destroyCache("stemVariants");
+            cache = ignite.createCache("stemVariants");
+            cache = cache.withExpiryPolicy(new CreatedExpiryPolicy(Duration.ZERO));
+
+        }catch (Exception e){
+            if(cache!=null)cache.close();
+            if(ignite!=null)ignite.close();
+        }
+        return cache;
     }
     public String toString(Similarity similarity, QueryParser.Operator operator, String field,String tag, int part) {
         String p = part == 0 ? "all" : Integer.toString(part);
