@@ -26,6 +26,9 @@ public class SystemEvaluatorTool extends CmdLineTool {
     @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem|NoStemTurkish_Zemberek_SnowballTr_F5Stem]", required = true, usage = "Index Tag")
     protected String tags = "NoStemTurkish_Zemberek_SnowballTr_F5Stem";
 
+    @Option(name = "-models", metaVar = "all|custom as in usage", required = false, usage = "ex:BM25k1.5b0.5_PL2c3.5_LGDc1.5_DirichletLMc500")
+    protected String models = "all";
+
     @Option(name = "-op", metaVar = "[AND|OR]", required = false, usage = "query operator (q.op)")
     protected String op = "OR";
 
@@ -66,7 +69,7 @@ public class SystemEvaluatorTool extends CmdLineTool {
 
         for (int i = 0; i < tagsArr.length; i++) {
             String tag = tagsArr[i];
-            final Evaluator evaluator = new Evaluator(dataSet, tag, measure, "all", evalDirectory, op);
+            final Evaluator evaluator = new Evaluator(dataSet, tag, measure, models, evalDirectory, op);
             evaluator.oracleMax();
             evaluatorMap.put(Tag.tag(tag), evaluator);
             //needs = evaluator.getNeeds();
