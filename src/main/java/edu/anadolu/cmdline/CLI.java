@@ -144,6 +144,8 @@ public final class CLI {
 
         tools.add(new CustomTool());
 
+        tools.add(new AdHocExpTool());
+
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);
         }
