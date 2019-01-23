@@ -30,7 +30,7 @@ public class CustomTool extends CmdLineTool {
     @Option(name = "-models", required = false, usage = "term-weighting models")
     protected String models = "BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0";
 
-    @Option(name = "-metric", required = false, usage = "Effectiveness measure")
+    @Option(name = "-metric", required = false, usage = "Effectiveness measure; needed only eval task")
     protected Measure measure = Measure.NDCG20;
 
     @Option(name = "-collection", required = true, usage = "Collection")
