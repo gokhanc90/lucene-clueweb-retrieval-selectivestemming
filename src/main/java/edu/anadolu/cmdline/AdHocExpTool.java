@@ -57,6 +57,9 @@ public class AdHocExpTool extends CmdLineTool {
     @Option(name = "-collection", required = true, usage = "Collection")
     private Collection collection;
 
+    @Option(name = "-Ignite", required = false, usage = "Max RAM size of ignite in GB")
+    private long ram=1L;
+
     //  @Option(name = "-spam", required = false, usage = "manuel spam threshold", metaVar = "10 20 30 .. 90")
     // private int spam = 0;
 
@@ -220,7 +223,7 @@ public class AdHocExpTool extends CmdLineTool {
         IgniteConfiguration cfg = new IgniteConfiguration();
 
         DataStorageConfiguration storageCfg = new DataStorageConfiguration();
-        storageCfg.getDefaultDataRegionConfiguration().setMaxSize(20L * 1024 * 1024 * 1024);//20GB
+        storageCfg.getDefaultDataRegionConfiguration().setMaxSize(ram * 1024 * 1024 * 1024);//20GB
         storageCfg.getDefaultDataRegionConfiguration().setPersistenceEnabled(true); //use disk
         cfg.setDataStorageConfiguration(storageCfg);
 
@@ -236,6 +239,7 @@ public class AdHocExpTool extends CmdLineTool {
             cache = cache.withExpiryPolicy(new CreatedExpiryPolicy(Duration.ZERO));
 
         }catch (Exception e){
+            e.printStackTrace();
             if(cache!=null)cache.close();
             if(ignite!=null)ignite.close();
         }
