@@ -18,6 +18,7 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.configuration.WALMode;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -38,6 +39,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class AdHocExpTool extends CmdLineTool {
@@ -128,15 +130,15 @@ public class AdHocExpTool extends CmdLineTool {
         if ("commonality".equals(task)) {
             IgniteCache<String, LinkedList<String>> stemVariants=null;
             try {
+                stemVariants = getEmptyMap();
+                System.out.println("map is got");
                 Set<String> lexicon = getLexicon(dataset, Tag.NoStem);
                 System.out.println("lexiconSize= " + lexicon.size());
                 Analyzer analyzer = Analyzers.analyzer(Tag.tag(tag));
 
-                stemVariants = getEmptyMap();
-
                 for (String term : lexicon) {
                     List<String> stems = Analyzers.getAnalyzedTokens(term, analyzer);
-                    if (stems.size() != 1) continue;
+                    if (stems.size() == 0) continue;
                     String stem = stems.get(0);
 
                     if (stemVariants.containsKey(stem)) {
@@ -158,7 +160,9 @@ public class AdHocExpTool extends CmdLineTool {
                 for (InfoNeed need : selector.allQueries) {
                     StringBuilder br = new StringBuilder();
                     for (String t : need.distinctSet) {
-                        String keyTerm = Analyzers.getAnalyzedToken(t, analyzer);
+                        List<String> stems = Analyzers.getAnalyzedTokens(t, analyzer);
+                        if (stems.size() == 0) continue;
+                        String keyTerm = stems.get(0);
                         if (!stemVariants.containsKey(keyTerm)) {
                             br.append(0 + "\t");
                             continue;
@@ -169,15 +173,20 @@ public class AdHocExpTool extends CmdLineTool {
                     System.out.println(need.id() + "\t" + need.query() + "\t" + br.toString());
                 }
                 System.out.println("Terms and variants");
+                System.out.println("Query terms size: "+selector.loadTermStatsMap().keySet().size());
                 for (String t : selector.loadTermStatsMap().keySet()) {
                     StringBuilder br = new StringBuilder();
-                    String keyTerm = Analyzers.getAnalyzedToken(t, analyzer);
+                    List<String> stems = Analyzers.getAnalyzedTokens(t, analyzer);
+                    if (stems.size() == 0) continue;
+                    String keyTerm = stems.get(0);
                     if (!stemVariants.containsKey(keyTerm)) {
                         br.append(keyTerm + "={}\t");
+                        System.out.println(br.toString());
                         continue;
                     }
                     String variantsPretty = keyTerm + "=" + stemVariants.get(keyTerm).stream().collect(Collectors.joining(";", "{", "}"));
                     br.append(variantsPretty + "\t");
+                    System.out.println(br.toString());
                 }
             }catch (Exception e){
                 e.printStackTrace();
@@ -224,19 +233,29 @@ public class AdHocExpTool extends CmdLineTool {
 
         DataStorageConfiguration storageCfg = new DataStorageConfiguration();
         storageCfg.getDefaultDataRegionConfiguration().setMaxSize(ram * 1024 * 1024 * 1024);//20GB
-        storageCfg.getDefaultDataRegionConfiguration().setPersistenceEnabled(true); //use disk
+        //storageCfg.getDefaultDataRegionConfiguration().setPersistenceEnabled(true); //use disk
         cfg.setDataStorageConfiguration(storageCfg);
+        //cfg.setSystemThreadPoolSize(2);
+
 
 
         IgniteCache<String, LinkedList<String>> cache=null;
         try {
+            System.out.println("Ignite is starting");
             ignite = Ignition.start(cfg);
-            ignite.cluster().active(true);
+            System.out.println("Ignite is started");
+            //ignite.cluster().active(true);
+            //System.out.println("Ignite cluster is activated");
 
-
-            ignite.destroyCache("stemVariants");
+            System.out.println("Caches: "+ignite.cacheNames());
+            if(ignite.cacheNames().contains("stemVariants")) {
+                System.out.println("Cache stemVariants is removing");
+                ignite.destroyCache("stemVariants");
+                System.out.println("Cache stemVariants is removed");
+            }
             cache = ignite.createCache("stemVariants");
-            cache = cache.withExpiryPolicy(new CreatedExpiryPolicy(Duration.ZERO));
+            System.out.println("Cache stemVariants is created");
+            cache = cache.withExpiryPolicy(new CreatedExpiryPolicy(new Duration(TimeUnit.HOURS,3)));
 
         }catch (Exception e){
             e.printStackTrace();
