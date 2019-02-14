@@ -185,6 +185,16 @@ public class Analyzers {
                         .addTokenFilter("turkishlowercase")
                         .addTokenFilter(TruncateTokenFilterFactory.class,"prefixLength","5")
                         .build();
+
+            case BoilerpipeArt:
+                return Analyzers.anlyzr(Tag.NoStem);
+
+            case BoilerpipeLC:
+                return Analyzers.anlyzr(Tag.NoStem);
+
+            case BoilerpipeDefault:
+                return Analyzers.anlyzr(Tag.NoStem);
+
             default:
                 throw new AssertionError(Analyzers.class);
 

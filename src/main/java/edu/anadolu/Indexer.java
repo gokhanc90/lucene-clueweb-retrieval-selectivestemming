@@ -1,9 +1,11 @@
 package edu.anadolu;
 
+import com.google.common.util.concurrent.SimpleTimeLimiter;
 import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.DataSet;
+import edu.anadolu.field.Boilerpipe;
 import edu.anadolu.field.MetaTag;
 import edu.anadolu.field.SemanticElements;
 import edu.anadolu.similarities.MetaTerm;
@@ -134,7 +136,16 @@ public class Indexer {
 
             return index(id, contents);
         }
+        private int indexBoilerpipe(String contents, String id) throws IOException {
 
+            // don't index empty documents
+            if (contents.length() == 0) {
+                System.err.println(id);
+                return 1;
+            }
+
+            return index(id, contents);
+        }
         private int indexJDocWithAnchor(org.jsoup.nodes.Document jDoc, String id) throws IOException {
 
             StringBuilder contents = new StringBuilder(jDoc.text()).append(" ");
@@ -177,6 +188,19 @@ public class Indexer {
             String id = warcRecord.id();
 
             if (skip(id)) return 0;
+
+            if(tag.equals(Tag.BoilerpipeArt)){
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe(new Boilerpipe().articleExtractor(warcRecord),id);
+            }
+            if(tag.equals(Tag.BoilerpipeDefault)) {
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe(new Boilerpipe().defaultExtractor(warcRecord), id);
+            }
+            if(tag.equals(Tag.BoilerpipeLC)){
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe(new Boilerpipe().LCExtractor(warcRecord),id);
+            }
 
             org.jsoup.nodes.Document jDoc;
 //
@@ -318,6 +342,17 @@ public class Indexer {
      */
     protected boolean skip(String docId) {
         return "clueweb12-1100wb-15-21381".equals(docId) || "clueweb12-1013wb-14-21356".equals(docId);
+    }
+
+    /**
+     * Skip certain documents that hang Boilerpipe method
+     *
+     * @param docId document identifier
+     * @return true if the document should be skipped
+     */
+    protected boolean skipBoilerpipe(String docId) {
+        return "clueweb12-1008wb-40-24989".equals(docId) || "clueweb12-1008wb-46-11212".equals(docId)
+                || "clueweb12-1008wb-46-11227".equals(docId) || "clueweb12-1008wb-52-13619".equals(docId);
     }
 
     protected Path indexPath;
