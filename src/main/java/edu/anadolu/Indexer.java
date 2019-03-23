@@ -51,6 +51,7 @@ import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
+import static edu.anadolu.analysis.Analyzers.scripts;
 import static edu.anadolu.field.MetaTag.notEmpty;
 import static org.apache.solr.common.params.CommonParams.HEADER_ECHO_PARAMS;
 import static org.apache.solr.common.params.CommonParams.OMIT_HEADER;
@@ -59,11 +60,6 @@ import static org.apache.solr.common.params.CommonParams.OMIT_HEADER;
  * Indexer for ClueWeb{09|12} plus GOV2
  */
 public class Indexer {
-
-    /**
-     * artificial field and token: every document should have this
-     */
-    public static final IndexableField ARTIFICIAL = new NoPositionsTextField("all", "all");
 
     public static final class NoPositionsTextField extends Field {
 
@@ -109,9 +105,16 @@ public class Indexer {
             // entire document
             document.add(new NoPositionsTextField(FIELD_CONTENTS, contents));
 
-            // add artificial: every document should have this
-            if (!config.field && config.artificial)
-                document.add(ARTIFICIAL);
+            // handle script flag
+            if (!config.field && config.script) {
+
+                for (String script : scripts)
+                    document.add(new NoPositionsTextField(script, contents));
+
+                document.add(new NoPositionsTextField("ascii", contents));
+                document.add(new NoPositionsTextField("latin", contents));
+            }
+
 
             // URLs only
             // document.add(new NoPositionsTextField("url", contents));
@@ -151,7 +154,7 @@ public class Indexer {
             StringBuilder contents = new StringBuilder(jDoc.text()).append(" ");
 
             if (config.anchor && solr != null) {
-                String anchor = anchor(id);
+                String anchor = anchor(id, solr);
                 if (anchor != null)
                     stripHTMLAndAppend(anchor, contents);
             }
@@ -330,7 +333,7 @@ public class Indexer {
         public void run() {
             try {
 
-                Thread.currentThread().setName(inputWarcFile.getFileName().toString());
+                Thread.currentThread().setName(inputWarcFile.toAbsolutePath().toString());
                 setName(inputWarcFile.getFileName().toString());
 
                 if (Collection.CW09A.equals(collection) || Collection.CW09B.equals(collection)) {
@@ -379,7 +382,7 @@ public class Indexer {
     private final IndexerConfig config;
     private final Collection collection;
 
-    private String anchor(String id) {
+    public static String anchor(String id, SolrClient solr) {
         SolrQuery query = new SolrQuery();
         query.setQuery(id);
         query.setFields("anchor");
@@ -511,20 +514,20 @@ public class Indexer {
 
 
         if (config.anchor && solr != null) {
-            String anchor = anchor(wDoc.id());
+            String anchor = anchor(wDoc.id(), solr);
             if (anchor != null)
                 document.add(new NoPositionsTextField("anchor", anchor));
         }
 
-        String metaNames = MetaTag.metaTagsWithNameAttribute(jDoc);
+        // String metaNames = MetaTag.metaTagsWithNameAttribute(jDoc);
 
-        if (notEmpty.test(metaNames))
-            document.add(new NoPositionsTextField("meta", metaNames));
+        //   if (notEmpty.test(metaNames))
+        //       document.add(new NoPositionsTextField("meta", metaNames));
 
-        document.add(new NoPositionsTextField("bt", body + " " + title));
-        document.add(new NoPositionsTextField("btd", body + " " + title + " " + description));
-        document.add(new NoPositionsTextField("btk", body + " " + title + " " + keywords));
-        document.add(new NoPositionsTextField("btdk", body + " " + title + " " + description + " " + keywords));
+        //  document.add(new NoPositionsTextField("bt", body + " " + title));
+        //  document.add(new NoPositionsTextField("btd", body + " " + title + " " + description));
+        //  document.add(new NoPositionsTextField("btk", body + " " + title + " " + keywords));
+        //  document.add(new NoPositionsTextField("btdk", body + " " + title + " " + description + " " + keywords));
 
 
         /*
@@ -569,7 +572,7 @@ public class Indexer {
         FileVisitor<Path> fv = new SimpleFileVisitor<Path>() {
 
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
 
                 Path name = file.getFileName();
                 if (name != null && name.toString().endsWith(suffix))
@@ -817,7 +820,7 @@ public class Indexer {
 
         boolean anchor = false;
         boolean field = false;
-        boolean artificial = false;
+        boolean script = false;
         boolean semantic = false;
 
         public IndexerConfig useAnchorText(boolean anchor) {
@@ -825,8 +828,8 @@ public class Indexer {
             return this;
         }
 
-        public IndexerConfig useArtificialField(boolean artificial) {
-            this.artificial = artificial;
+        public IndexerConfig useScripts(boolean script) {
+            this.script = script;
             return this;
         }
 

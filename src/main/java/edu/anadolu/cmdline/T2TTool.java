@@ -1,6 +1,7 @@
 package edu.anadolu.cmdline;
 
 import edu.anadolu.Decorator;
+import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
@@ -8,6 +9,7 @@ import edu.anadolu.freq.Freq;
 import edu.anadolu.knn.ChiBase;
 import edu.anadolu.knn.ChiSquare;
 import edu.anadolu.knn.TFDAwareNeed;
+import edu.anadolu.qpp.PMI;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -19,10 +21,10 @@ import org.kohsuke.args4j.Option;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.clueweb09.tracks.Track.whiteSpaceSplitter;
 
 /**
  * Term2Term (T2T Tool)
@@ -31,6 +33,12 @@ class T2TTool extends CmdLineTool {
 
     @Option(name = "-collection", required = true, usage = "Collection")
     protected edu.anadolu.datasets.Collection collection;
+
+    @Option(name = "-task", required = false, usage = "task to be executed")
+    private String task;
+
+    @Option(name = "-tag", metaVar = "[KStem|KStemAnchor]", required = false, usage = "Index Tag")
+    protected String tag = Tag.KStem.toString();
 
     @Override
     public String getShortDescription() {
@@ -58,6 +66,55 @@ class T2TTool extends CmdLineTool {
         DataSet dataset = CollectionFactory.dataset(collection, tfd_home);
 
         Path collectionPath = Paths.get(tfd_home, collection.toString());
+
+        if ("pmi".equals(task)) {
+
+            final Map<String, Double> cache = new HashMap<>();
+
+            PMI pmi = new PMI(dataset.indexesPath().resolve(tag), "contents");
+
+            List<String> terms = dataset.getTopics().stream()
+                    .map(InfoNeed::query)
+                    .map(whiteSpaceSplitter::split)
+                    .flatMap(Arrays::stream)
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            System.out.print("\t");
+            for (String term : terms)
+                System.out.print(term + "\t");
+            System.out.println();
+
+            for (String term : terms) {
+                System.out.print(term + "\t");
+                for (String other : terms) {
+
+                    final String key1 = other + "_" + term;
+                    final String key2 = term + "_" + other;
+
+                    final double sim;
+                    if (cache.containsKey(key1)) {
+                        sim = cache.get(key1);
+                    } else if (cache.containsKey(key2)) {
+                        sim = cache.get(key2);
+                    } else {
+                        sim = pmi.pmi(term, other);
+                        cache.put(key1, sim);
+                    }
+                    System.out.print(String.format("%.4f", sim) + "\t");
+                }
+                System.out.println();
+            }
+
+            System.out.println("=========================");
+            System.out.print("terms={");
+            for (String term : terms) {
+                System.out.print("'" + term + "',");
+            }
+            System.out.println("}");
+            return;
+        }
 
         Path excelPath = collectionPath.resolve("excels");
         if (!Files.exists(excelPath))

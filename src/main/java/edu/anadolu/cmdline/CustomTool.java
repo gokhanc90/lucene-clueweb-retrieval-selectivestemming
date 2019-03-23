@@ -30,7 +30,7 @@ public class CustomTool extends CmdLineTool {
     @Option(name = "-models", required = false, usage = "term-weighting models")
     protected String models = "BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0";
 
-    @Option(name = "-metric", required = false, usage = "Effectiveness measure; needed only eval task")
+    @Option(name = "-metric", required = false, usage = "Effectiveness measure")
     protected Measure measure = Measure.NDCG20;
 
     @Option(name = "-collection", required = true, usage = "Collection")
@@ -41,7 +41,7 @@ public class CustomTool extends CmdLineTool {
 
 
     @Option(name = "-task", required = false, usage = "task to be executed: search or eval")
-    private String task="search";
+    private String task;
 
     @Override
     public String getShortDescription() {

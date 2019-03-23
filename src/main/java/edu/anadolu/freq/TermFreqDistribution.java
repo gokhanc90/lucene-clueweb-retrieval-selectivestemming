@@ -4,6 +4,7 @@ package edu.anadolu.freq;
 import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.index.*;
 import org.apache.lucene.store.FSDirectory;
 import org.clueweb09.InfoNeed;
@@ -200,7 +201,7 @@ public class TermFreqDistribution implements TFD {
                 }
                 allOutput.println(need.id() + ":" + word + "\t" + line);
             }
-
+            subParts.clear();
         }
 
         cache.clear();

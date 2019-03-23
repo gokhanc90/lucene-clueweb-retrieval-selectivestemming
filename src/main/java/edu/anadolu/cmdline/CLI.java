@@ -4,7 +4,9 @@ import edu.anadolu.field.CrossTool;
 import edu.anadolu.field.FieldTool;
 import edu.anadolu.field.SelectiveStemmingTool;
 import edu.anadolu.knn.*;
+import edu.anadolu.ltr.SEOTool;
 import org.apache.lucene.util.Version;
+import org.clueweb09.WarcTool;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -100,17 +102,11 @@ public final class CLI {
         // Tool for Term2Term (T2T)
         tools.add(new T2TTool());
 
-        tools.add(new ExcelTool());
-
         tools.add(new AbsoluteTool());
 
         tools.add(new XTool());
 
         tools.add(new YTool());
-
-        tools.add(new IPTool());
-
-        tools.add(new TallyTool());
 
         tools.add(new BinaryTool());
 
@@ -119,8 +115,6 @@ public final class CLI {
         tools.add(new ExampleTool());
 
         tools.add(new TFTool());
-
-        tools.add(new SigTool());
 
         tools.add(new FieldTool());
 
@@ -138,11 +132,17 @@ public final class CLI {
 
         tools.add(new SelectiveStemmingTool());
 
+        tools.add(new WarcTool());
+
         tools.add(new QueryPerTFTool());
 
-        tools.add(new SystemEvaluatorTool());
+        tools.add(new RocTool());
 
         tools.add(new CustomTool());
+
+        tools.add(new SEOTool());
+
+        tools.add(new SystemEvaluatorTool());
 
         tools.add(new AdHocExpTool());
 
@@ -181,7 +181,7 @@ public final class CLI {
         }
     }
 
-    public static Properties readProperties() {
+    private static Properties readProperties() {
 
         Properties prop = new Properties();
 
