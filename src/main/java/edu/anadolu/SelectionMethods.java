@@ -146,15 +146,17 @@ public class SelectionMethods {
         long[] obs1TF = listTermTag1.stream().mapToLong(t -> t.TF).toArray();
         long[] obs2TF = listTermTag2.stream().mapToLong(t -> t.TF).toArray();
 
-        long[] obs1 =  ArrayUtils.addAll(obs1DF, obs1TF);
-        long[] obs2 =  ArrayUtils.addAll(obs2DF, obs2TF);
+        long[] obs1 = Arrays.stream(ArrayUtils.addAll(obs1DF, obs1TF)).map(v -> v==0 ? 1:v).toArray();
+        long[] obs2 = Arrays.stream(ArrayUtils.addAll(obs2DF, obs2TF)).map(v -> v==0 ? 1:v).toArray();
 
         ChiSquareTest chi = new ChiSquareTest();
         double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        double ChiS=chi.chiSquareDataSetsComparison(obs1,obs2);
         boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
 
         //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
         System.err.print(String.format("pVal: \t%f\t",pval));
+        System.err.print(String.format("ChiS: \t%f\t",ChiS));
         if(isSig) return tagsArr[0]; //No_Stem
         return tagsArr[1];
     }
@@ -183,8 +185,8 @@ public class SelectionMethods {
         double[] obs1IDF = listTermTag1.stream().mapToDouble(t -> Utils.idf(TermTFDF.maxDF, t.DF)).toArray();
         double[] obs2IDF = listTermTag2.stream().mapToDouble(t -> Utils.idf(TermTFDF.maxDF, t.DF)).toArray();
 
-        long[] obs1TF = listTermTag1.stream().mapToLong(t -> t.TF).toArray();
-        long[] obs2TF = listTermTag2.stream().mapToLong(t->t.TF).toArray();
+        long[] obs1TF = listTermTag1.stream().mapToLong(t -> t.TF).map(v -> v==0 ? 1:v).toArray();
+        long[] obs2TF = listTermTag2.stream().mapToLong(t->t.TF).map(v -> v==0 ? 1:v).toArray();
 
         long[] obs1 = new long[listTermTag1.size()];
         for(int i=0;i<obs1.length;i++){
@@ -198,10 +200,12 @@ public class SelectionMethods {
 
         ChiSquareTest chi = new ChiSquareTest();
         double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        double ChiS=chi.chiSquareDataSetsComparison(obs1,obs2);
         boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
 
         //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
         System.err.print(String.format("pVal: \t%f\t",pval));
+        System.err.print(String.format("ChiS: \t%f\t",ChiS));
         if(isSig) return tagsArr[0]; //No_Stem
         return tagsArr[1];
     }
@@ -226,15 +230,17 @@ public class SelectionMethods {
             listTermTag2.add(termTFDF);
         }
 
-        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.TF).toArray();
-        long[] obs2 = listTermTag2.stream().mapToLong(t->t.TF).toArray();
+        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.TF).map(v -> v==0 ? 1:v).toArray();
+        long[] obs2 = listTermTag2.stream().mapToLong(t->t.TF).map(v -> v==0 ? 1:v).toArray();
 
         ChiSquareTest chi = new ChiSquareTest();
         double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        double ChiS=chi.chiSquareDataSetsComparison(obs1,obs2);
         boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
 
         //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
         System.err.print(String.format("pVal: \t%f\t",pval));
+        System.err.print(String.format("ChiS: \t%f\t",ChiS));
         if(isSig) return tagsArr[0]; //No_Stem
         return tagsArr[1];
     }
@@ -259,15 +265,17 @@ public class SelectionMethods {
             listTermTag2.add(termTFDF);
         }
 
-        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.DF).toArray();
-        long[] obs2 = listTermTag2.stream().mapToLong(t->t.DF).toArray();
+        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.DF).map(v -> v==0 ? 1:v).toArray();
+        long[] obs2 = listTermTag2.stream().mapToLong(t->t.DF).map(v -> v==0 ? 1:v).toArray();
 
         ChiSquareTest chi = new ChiSquareTest();
         double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        double ChiS=chi.chiSquareDataSetsComparison(obs1,obs2);
         boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
 
         //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
         System.err.print(String.format("pVal: \t%f\t",pval));
+        System.err.print(String.format("ChiS: \t%f\t",ChiS));
         if(isSig) return tagsArr[0]; //No_Stem
         return tagsArr[1];
     }
@@ -861,9 +869,9 @@ public class SelectionMethods {
         String ChiSqureAggDFTF = ChiSqureAggDFTF(tagTermTermStats, tagsArr);
         String ChiSqureDF = ChiSqureDF(tagTermTermStats, tagsArr);
         String ChiSqureTF = ChiSqureTF(tagTermTermStats, tagsArr);
-        String ChiSqureTFIDF = ChiSqureTFIDF(tagTermTermStats, tagsArr);
-        System.err.print(String.format("\t%s\t%s\t%s\t%s\t",
-                ChiSqureDF,ChiSqureTF,ChiSqureAggDFTF,ChiSqureTFIDF)); //print part1
+        //String ChiSqureTFIDF = ChiSqureTFIDF(tagTermTermStats, tagsArr);
+        //System.err.print(String.format("\t%s\t%s\t%s\t",
+        //        ChiSqureDF,ChiSqureTF,ChiSqureAggDFTF)); //print part1
         return tagsArr[0];
     }
 /*

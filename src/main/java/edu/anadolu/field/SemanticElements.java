@@ -168,7 +168,7 @@ public class SemanticElements {
 
     }
 
-    static String docType(org.jsoup.nodes.Document jDoc){
+    public static String docType(org.jsoup.nodes.Document jDoc){
         String type = "";
         Node typeNode = jDoc.childNode(0);
         String name = typeNode.attr("name");
@@ -176,12 +176,12 @@ public class SemanticElements {
         String systemId = typeNode.attr("systemId");
         String[] tokens = publicId.split("//");
 
-        if(publicId=="" && systemId=="" && name.equalsIgnoreCase("html")) {
+        if(publicId.equals("") && systemId.equals("") && name.equalsIgnoreCase("html")) {
             type="html5";
             return type;
         }
 
-        if(publicId=="" && systemId.endsWith("mathml.dtd") && name.equalsIgnoreCase("math")) {
+        if(publicId.equals("") && systemId.endsWith("mathml.dtd") && name.equalsIgnoreCase("math")) {
             type="MathML 1.01 - DTD";
             return type;
         }

@@ -5,7 +5,6 @@ import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.DataSet;
-import edu.anadolu.field.Boilerpipe;
 import edu.anadolu.field.MetaTag;
 import edu.anadolu.field.SemanticElements;
 import edu.anadolu.similarities.MetaTerm;
@@ -47,6 +46,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
@@ -139,7 +139,7 @@ public class Indexer {
         private int indexBoilerpipe(String contents, String id) throws IOException {
 
             // don't index empty documents
-            if (contents.length() == 0) {
+            if (contents.trim().length() == 0) {
                 System.err.println(id);
                 return 1;
             }
@@ -189,18 +189,6 @@ public class Indexer {
 
             if (skip(id)) return 0;
 
-            if(tag.equals(Tag.BoilerpipeArt)){
-                if (skipBoilerpipe(id)) return 0;
-                return indexBoilerpipe(new Boilerpipe().articleExtractor(warcRecord),id);
-            }
-            if(tag.equals(Tag.BoilerpipeDefault)) {
-                if (skipBoilerpipe(id)) return 0;
-                return indexBoilerpipe(new Boilerpipe().defaultExtractor(warcRecord), id);
-            }
-            if(tag.equals(Tag.BoilerpipeLC)){
-                if (skipBoilerpipe(id)) return 0;
-                return indexBoilerpipe(new Boilerpipe().LCExtractor(warcRecord),id);
-            }
 
             org.jsoup.nodes.Document jDoc;
 //
@@ -224,15 +212,44 @@ public class Indexer {
 //                service.shutdown();
 //            }
 
-            try {
-                jDoc = Jsoup.parse(warcRecord.content());
-            } catch (java.lang.OutOfMemoryError oom) {
-                System.err.println("jdoc oom " + id);
-                return 1;
-            } catch (Exception exception) {
+//            try {
+//                jDoc = Jsoup.parse(warcRecord.content());
+//            } catch (java.lang.OutOfMemoryError oom) {
+//                System.err.println("jdoc oom " + id);
+//                return 1;
+//            } catch (Exception exception) {
+//                System.err.println("jdoc exception " + id);
+//                return 1;
+//            }
+
+            jDoc = new JsoupParserWithTimeLimiter().tryJsoupParse(warcRecord.content());
+            if(jDoc==null){
                 System.err.println("jdoc exception " + id);
                 return 1;
             }
+
+
+            if(tag.equals(Tag.BoilerpipeArt)){
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe(jDoc.title()+" "+(new Boilerpipe().articleExtractor(warcRecord)),id);
+            }
+            if(tag.equals(Tag.BoilerpipeDefault)) {
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe(jDoc.title()+" "+(new Boilerpipe().defaultExtractor(warcRecord)), id);
+            }
+            if(tag.equals(Tag.BoilerpipeLC)){
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe(jDoc.title()+" "+(new Boilerpipe().LCExtractor(warcRecord)),id);
+            }
+            if(tag.equals(Tag.CustomBoilerPipeAndJsoup)){
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe((new Boilerpipe().CustomBoilerPipeAndJsoup(warcRecord,jDoc,false)),id);
+            }if(tag.equals(Tag.CustomRemovalBoilerPipeAndJsoup)){
+                if (skipBoilerpipe(id)) return 0;
+                return indexBoilerpipe((new Boilerpipe().CustomBoilerPipeAndJsoup(warcRecord,jDoc,true)),id);
+            }
+
+
 
             if (config.anchor)
                 return indexJDocWithAnchor(jDoc, id);
@@ -352,7 +369,8 @@ public class Indexer {
      */
     protected boolean skipBoilerpipe(String docId) {
         return "clueweb12-1008wb-40-24989".equals(docId) || "clueweb12-1008wb-46-11212".equals(docId)
-                || "clueweb12-1008wb-46-11227".equals(docId) || "clueweb12-1008wb-52-13619".equals(docId);
+                || "clueweb12-1008wb-46-11227".equals(docId) || "clueweb12-1008wb-52-13619".equals(docId)
+                || "clueweb12-0009wb-11-30310".equals(docId);
     }
 
     protected Path indexPath;
@@ -681,7 +699,14 @@ public class Indexer {
             writer.close();
             dir.close();
         }
-
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(15000, TimeUnit.MILLISECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+        }
         return numIndexed;
     }
 
@@ -712,6 +737,43 @@ public class Indexer {
         try (Stream<Path> stream = Files.find(docsPath, 3, new WarcMatcher(suffix))) {
 
             stream.parallel().forEach(p -> {
+                new IndexerThread(writer, p).run();
+            });
+
+        }
+
+        int numIndexed = writer.maxDoc();
+
+        try {
+            writer.commit();
+        } finally {
+            writer.close();
+            dir.close();
+        }
+
+        return numIndexed;
+    }
+    public int indexWithoutThread() throws IOException {
+
+        System.out.println("Indexing to directory '" + indexPath.toAbsolutePath() + "'...");
+
+        final Directory dir = FSDirectory.open(indexPath);
+
+        final IndexWriterConfig iwc = new IndexWriterConfig(analyzer());
+
+        iwc.setSimilarity(new MetaTerm());
+        iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+        iwc.setRAMBufferSizeMB(512.0);
+        iwc.setUseCompoundFile(false);
+        iwc.setMergeScheduler(new ConcurrentMergeScheduler());
+
+        final IndexWriter writer = new IndexWriter(dir, iwc);
+
+        final String suffix = Collection.GOV2.equals(collection) ? ".gz" : ".warc.gz";
+
+        try (Stream<Path> stream = Files.find(docsPath, 3, new WarcMatcher(suffix))) {
+
+            stream.forEach(p -> {
                 new IndexerThread(writer, p).run();
             });
 

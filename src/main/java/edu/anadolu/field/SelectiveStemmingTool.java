@@ -47,7 +47,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
     protected String models = "all";
 
     @Option(name = "-metric", required = false, usage = "Effectiveness measure")
-    protected Measure measure = Measure.MAP;
+    protected Measure measure = Measure.NDCG20;
 
     @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem]", required = false, usage = "First:NoStem Second:Stem")
     protected String tags = "NoStemTurkish_Zemberek";
@@ -251,7 +251,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
                    // System.out.println(tag + " " + need.id() + " " + score);
                 }
             }
-            System.err.print(String.format("%s\t%s\t",need.id(),need.query())); //print part2
+            System.err.print(String.format("%s\t%s\t%d\t",need.id(),need.query(),need.wordCount())); //print part2
             predictedTag = SelectionMethods.getPredictedTag(selection,tagTermStatsMap,tagsArr); ///print part3 will done inside
             double predictedScore = evaluatorMap.get(Tag.tag(predictedTag)).score(need, model);
             Prediction prediction = new Prediction(need, predictedTag, predictedScore);

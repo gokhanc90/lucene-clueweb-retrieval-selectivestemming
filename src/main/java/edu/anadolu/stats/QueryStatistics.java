@@ -23,6 +23,12 @@ public final class QueryStatistics {
         this.dataset = dataset;
     }
 
+    public void queryLengthList() {
+        for (InfoNeed need : dataset.getTopics()){
+            System.out.println(need.id()+"\t"+need.wordCount());
+        }
+    }
+
     public void queryLengthHistogram() {
 
         int[] counts = new int[20];

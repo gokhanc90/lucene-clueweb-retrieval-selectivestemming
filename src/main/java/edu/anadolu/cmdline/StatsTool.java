@@ -64,6 +64,12 @@ final class StatsTool extends CmdLineTool {
             return;
         }
 
+        if ("queryLength".equals(task)) {
+            QueryStatistics queryStatistics = new QueryStatistics(dataset);
+            queryStatistics.queryLengthList();
+            return;
+        }
+
         for (Path indexPath : discoverIndexes(dataset)) {
             try (CorpusStatistics statistics = new CorpusStatistics(indexPath, statsPath)) {
                 statistics.saveFieldStats(fields);

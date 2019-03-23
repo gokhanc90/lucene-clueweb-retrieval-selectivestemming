@@ -13,12 +13,12 @@ import edu.anadolu.similarities.DFIC;
 import edu.anadolu.similarities.DFRee;
 import edu.anadolu.similarities.DLH13;
 import edu.anadolu.similarities.DPH;
+import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.configuration.WALMode;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -36,11 +36,14 @@ import org.kohsuke.args4j.Option;
 import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
 
 public class AdHocExpTool extends CmdLineTool {
 
@@ -59,14 +62,14 @@ public class AdHocExpTool extends CmdLineTool {
     @Option(name = "-collection", required = true, usage = "Collection")
     private Collection collection;
 
-    @Option(name = "-Ignite", required = false, usage = "Max RAM size of ignite in GB")
+    @Option(name = "-Ignite", required = false, usage = "Max RAM size of ignite in GB when task commonality")
     private long ram=1L;
 
     //  @Option(name = "-spam", required = false, usage = "manuel spam threshold", metaVar = "10 20 30 .. 90")
     // private int spam = 0;
 
 
-    @Option(name = "-task",  metaVar = "[commonality|...]", required = false,
+    @Option(name = "-task",  metaVar = "[commonality|resultSet]", required = false,
             usage = "commonality: calculates commonality scores of query terms")
     private String task="commonality";
 
@@ -96,32 +99,98 @@ public class AdHocExpTool extends CmdLineTool {
 
         DataSet dataset = CollectionFactory.dataset(collection, tfd_home);
 
-        final int numThreads = Integer.parseInt(props.getProperty("numThreads", "2"));
 
         if ("resultSet".equals(task)) {
-            final Set<ModelBase> modelBaseSet = Arrays.stream(models.split("_"))
-                    .map(ParamTool::string2model)
-                    .collect(Collectors.toSet());
+            final Evaluator evaluator = new Evaluator(dataset, Tag.NoStem.toString(), measure, models, "evals", "OR");
+            final Evaluator evaluatorS = new Evaluator(dataset, tag, measure, models, "evals", "OR");
+            Set<String> modelIntersection = new HashSet<>();
+            modelIntersection.addAll(evaluator.getModelSet());
+            modelIntersection.retainAll(evaluatorS.getModelSet());
 
-            modelBaseSet.add(new DFIC());
-            modelBaseSet.add(new DPH());
-            modelBaseSet.add(new DLH13());
-            modelBaseSet.add(new DFRee());
 
-            for (final Path indexPath : discoverIndexes(dataset)) {
+            final ArrayList<Path> thePathsN = new ArrayList<>();
+            final ArrayList<Path> thePaths = new ArrayList<>();
 
-                final String tag = indexPath.getFileName().toString();
+            for (final Track track : dataset.tracks())
+                thePaths.add(Paths.get(dataset.collectionPath().toString(), "runs", tag, track.toString()));
 
-                // search for a specific tag, skip the rest
-                if (this.tag != null && !tag.equals(this.tag)) continue;
-                for (final Track track : dataset.tracks()) {
+            for (final Track track : dataset.tracks())
+                thePathsN.add(Paths.get(dataset.collectionPath().toString(), "runs", Tag.NoStem.toString(), track.toString()));
 
-                    final Path path = Paths.get(dataset.collectionPath().toString(), "runs", tag, track.toString());
-                    for(Similarity similarity:modelBaseSet) {
-                        final String runTag = toString(similarity, QueryParser.Operator.OR, "contents",tag, 0);
-                        Path runFile = path.resolve(runTag + ".txt");
-                        //Read this file
+
+           // List<Path> paths = Evaluator.discoverTextFiles(thePath, op + "_all.txt");
+
+            //final Path path = Paths.get(dataset.collectionPath().toString(), "runs", tag);
+            //final Path pathN = Paths.get(dataset.collectionPath().toString(), "runs", Tag.NoStem.toString());
+            for(String similarity:modelIntersection) {
+                System.out.println(similarity);
+                System.out.println("qid\tTau_Cor\tintersection\tunion");
+                TreeMap<Integer,ArrayList<Long>> runMap = new TreeMap<>(); //qid, relevantdocs without alpha character
+                final String runTag = toString(similarity, QueryParser.Operator.OR, "contents",tag, 0);
+                for(Path thePath:thePaths) {
+                    Path runFile = thePath.resolve(runTag + ".txt");
+                    for (String line : Files.readAllLines(runFile, StandardCharsets.US_ASCII)) {
+                        String[] parts = line.split("\\s+");
+                        Integer qid = Integer.parseInt(parts[0]);
+                        String docid = parts[2];
+                        String docidToNumber = docid.replaceAll("[a-zA-Z\\-]", "");
+                        if (runMap.containsKey(qid)) {
+                            ArrayList l = runMap.get(qid);
+                            l.add(Long.parseLong(docidToNumber));
+                            runMap.put(qid, l);
+                        } else {
+                            ArrayList l = new ArrayList<Integer>();
+                            l.add(Long.parseLong(docidToNumber));
+                            runMap.put(qid, l);
+                        }
+
                     }
+                }
+
+                final String runTagN = toString(similarity, QueryParser.Operator.OR, "contents",Tag.NoStem.toString(), 0);
+                TreeMap<Integer,ArrayList<Long>> runMapN = new TreeMap<>();
+                for(Path thePath:thePathsN) {
+                    Path runFileN = thePath.resolve(runTagN + ".txt");
+                    for (String line : Files.readAllLines(runFileN, StandardCharsets.US_ASCII)) {
+                        String[] parts = line.split("\\s+");
+                        Integer qid = Integer.parseInt(parts[0]);
+                        String docid = parts[2];
+                        String docidToNumber = docid.replaceAll("[a-zA-Z\\-]", "");
+                        if (runMapN.containsKey(qid)) {
+                            ArrayList l = runMapN.get(qid);
+                            l.add(Long.parseLong(docidToNumber));
+                            runMapN.put(qid, l);
+                        } else {
+                            ArrayList l = new ArrayList<Integer>();
+                            l.add(Long.parseLong(docidToNumber));
+                            runMapN.put(qid, l);
+                        }
+
+                    }
+                }
+
+                if(!runMap.keySet().containsAll(runMapN.keySet()) || !runMapN.keySet().containsAll(runMap.keySet()))
+                    throw new RuntimeException("Qid sets are different!");
+                for(Integer key : runMap.keySet()){
+                    ArrayList<Long> ls = runMap.get(key);
+                    ArrayList<Long> ln = runMapN.get(key);
+                    KendallsCorrelation corr = new KendallsCorrelation();
+                    int min = ls.size();
+                    if(ln.size()<min) min = ln.size();
+                    double[] v1 = ln.stream().mapToDouble(i->i).limit(min).toArray();
+                    double[] v2 = ls.stream().mapToDouble(i->i).limit(min).toArray();
+
+                    double t = corr.correlation(v1,v2);
+
+                    Set<Long> intersection = new HashSet<>(ln); // use the copy constructor
+                    intersection.retainAll(ls);
+
+                    Set<Long> union = new HashSet<>(ln); // use the copy constructor
+                    union.addAll(ls);
+
+                    System.out.printf("%d\t%.2f\t%d\t%d\t",key,t,intersection.size(),union.size());
+                    System.out.println();
+
                 }
             }
             return;
@@ -264,8 +333,8 @@ public class AdHocExpTool extends CmdLineTool {
         }
         return cache;
     }
-    public String toString(Similarity similarity, QueryParser.Operator operator, String field,String tag, int part) {
+    public String toString(String similarity, QueryParser.Operator operator, String field,String tag, int part) {
         String p = part == 0 ? "all" : Integer.toString(part);
-        return similarity.toString().replaceAll(" ", "_") + "_" + field + "_" + tag + "_" + operator.toString() + "_" + p;
+        return similarity.replaceAll(" ", "_") + "_" + field + "_" + tag + "_" + operator.toString() + "_" + p;
     }
 }

@@ -195,6 +195,14 @@ public class Analyzers {
             case BoilerpipeDefault:
                 return Analyzers.anlyzr(Tag.NoStem);
 
+            case CustomBoilerPipe:
+                return Analyzers.anlyzr(Tag.NoStem);
+
+            case CustomBoilerPipeAndJsoup:
+                return Analyzers.anlyzr(Tag.NoStem);
+
+            case CustomRemovalBoilerPipeAndJsoup:
+                return Analyzers.anlyzr(Tag.NoStem);
             default:
                 throw new AssertionError(Analyzers.class);
 
