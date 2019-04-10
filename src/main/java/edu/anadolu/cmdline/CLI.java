@@ -146,6 +146,8 @@ public final class CLI {
 
         tools.add(new AdHocExpTool());
 
+        tools.add(new BinningHistogramTool());
+
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);
         }
