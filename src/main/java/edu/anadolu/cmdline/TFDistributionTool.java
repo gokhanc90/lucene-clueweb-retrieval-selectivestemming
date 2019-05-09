@@ -79,6 +79,9 @@ public final class TFDistributionTool extends CmdLineTool {
             for (Path indexPath : indexList) {
                 try (FSDirectory directory = FSDirectory.open(indexPath); IndexReader reader = DirectoryReader.open(directory)) {
                     String indexTag = indexPath.getFileName().toString();
+                    // search for a specific tag, skip the rest
+                    if (this.tag != null && !indexTag.equals(this.tag)) continue;
+                    
                     for (String field : fields) {
                         QueryFreqDistribution queryFreqDistribution = new QueryFreqDistribution(reader, freqsPath, binningStrategy, field, indexTag);
                         queryFreqDistribution.process(needs, indexTag, 10000);
@@ -94,11 +97,12 @@ public final class TFDistributionTool extends CmdLineTool {
         for (Path indexPath : indexList) {
 
             try (final IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPath))) {
-                System.out.println("Term Freq. Dist opened index directory : " + indexPath + " has " + reader.numDocs() + " numDocs and has " + reader.maxDoc() + " maxDocs");
                 final String indexTag = indexPath.getFileName().toString();
 
                 // search for a specific tag, skip the rest
                 if (this.tag != null && !indexTag.equals(this.tag)) continue;
+
+                System.out.println("Term Freq. Dist opened index directory : " + indexPath + " has " + reader.numDocs() + " numDocs and has " + reader.maxDoc() + " maxDocs");
 
                 Tag tag = Tag.tag(indexTag);
                 System.out.println("analyzer tag " + tag);

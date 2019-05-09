@@ -18,6 +18,9 @@ import java.util.Properties;
  */
 final class StatsTool extends CmdLineTool {
 
+    @Option(name = "-tag", metaVar = "[KStem|KStemAnchor]", required = false, usage = "Index Tag")
+    protected String tag = null;
+
     @Override
     public String getShortDescription() {
         return "ClueWeb09 Collection Statistic Tool";
@@ -65,6 +68,11 @@ final class StatsTool extends CmdLineTool {
         }
 
         for (Path indexPath : discoverIndexes(dataset)) {
+            final String tag = indexPath.getFileName().toString();
+
+            // search for a specific tag, skip the rest
+            if (this.tag != null && !tag.equals(this.tag)) continue;
+
             try (CorpusStatistics statistics = new CorpusStatistics(indexPath, statsPath)) {
                 statistics.saveFieldStats(fields);
                 statistics.saveLaTexStats(fields);

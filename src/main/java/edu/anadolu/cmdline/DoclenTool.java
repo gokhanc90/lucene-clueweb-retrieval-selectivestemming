@@ -20,6 +20,9 @@ import java.util.Set;
  */
 public final class DoclenTool extends CmdLineTool {
 
+    @Option(name = "-tag", metaVar = "[KStem|KStemAnchor]", required = false, usage = "Index Tag")
+    protected String tag = null;
+
     @Option(name = "-collection", required = true, usage = "Collection")
     private edu.anadolu.datasets.Collection collection;
 
@@ -55,6 +58,11 @@ public final class DoclenTool extends CmdLineTool {
         final String[] fields = props.getProperty("freq.fields", "description,keywords,title,contents").split(",");
 
         for (final Path indexPath : discoverIndexes(dataset)) {
+            final String tag = indexPath.getFileName().toString();
+
+            // search for a specific tag, skip the rest
+            if (this.tag != null && !tag.equals(this.tag)) continue;
+
             Tag t = Tag.tag(indexPath.getFileName().toString());
             Set<String> words = distinctTerms(needs, Analyzers.analyzer(t));
             for (String field : fields)
