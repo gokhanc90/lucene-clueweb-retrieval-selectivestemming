@@ -1,5 +1,6 @@
 package edu.anadolu;
 
+import edu.anadolu.freq.FreqBinning;
 import edu.anadolu.qpp.Aggregate;
 import edu.anadolu.stats.TermStats;
 import org.apache.commons.lang3.ArrayUtils;
@@ -27,7 +28,7 @@ public class SelectionMethods {
     }
 
     public static class TermTFDF {
-        public static int NumberOfBIN = 10; // set by selective stemming tool
+        public static int NumberOfBIN; // set by selective stemming tool
         public static long maxDF; // set by selective stemming tool
         public static long maxTF; //
 
@@ -69,8 +70,7 @@ public class SelectionMethods {
         }
 
         public void setBinTF(long TF) {
-            int size=(int)maxTF/NumberOfBIN;
-            this.binTF=(int)TF/size;
+            this.binTF=new FreqBinning(NumberOfBIN,maxTF).calculateBinValue(TF);
         }
 
         public int getBinDF() {
@@ -78,8 +78,7 @@ public class SelectionMethods {
         }
 
         public void setBinDF(long DF) {
-            int size=(int)maxDF/NumberOfBIN;
-            this.binDF=(int)DF/size;
+            this.binDF=new FreqBinning(NumberOfBIN,maxDF).calculateBinValue(DF);
         }
 
         @Override
@@ -89,10 +88,10 @@ public class SelectionMethods {
     }
 
     public static String getPredictedTag(String selectionTag,Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr){
-/*        if(tagTermTermStats.get(tagsArr[0]).size() == 1){
+        if(tagTermTermStats.get(tagsArr[0]).size() == 1){
             System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[0]; //One-term Stem
-        }*/
+        }
         switch (SelectionTag.tag(selectionTag)) {
             case MSTTF: return MSTTermFreq(tagTermTermStats,tagsArr);
             case MSTDF: return MSTDocFreq(tagTermTermStats, tagsArr);

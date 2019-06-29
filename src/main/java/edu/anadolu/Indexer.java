@@ -168,6 +168,9 @@ public class Indexer {
         }
 
         private int indexWarcRecord(WarcRecord warcRecord) throws IOException {
+            String id = warcRecord.id();
+
+            if (skip(id)) return 0;
             // see if it's a response record
             if (!RESPONSE.equals(warcRecord.type()))
                 return 0;
@@ -183,14 +186,11 @@ public class Indexer {
                 if (document == null)
                     return 1;
 
-                writer.addDocument(document);
+                //writer.addDocument(document);
 
                 return 1;
             }
 
-            String id = warcRecord.id();
-
-            if (skip(id)) return 0;
 
 
             org.jsoup.nodes.Document jDoc;
@@ -215,21 +215,21 @@ public class Indexer {
 //                service.shutdown();
 //            }
 
-//            try {
-//                jDoc = Jsoup.parse(warcRecord.content());
-//            } catch (java.lang.OutOfMemoryError oom) {
-//                System.err.println("jdoc oom " + id);
-//                return 1;
-//            } catch (Exception exception) {
-//                System.err.println("jdoc exception " + id);
-//                return 1;
-//            }
-
-            jDoc = new JsoupParserWithTimeLimiter().tryJsoupParse(warcRecord.content());
-            if(jDoc==null){
+            try {
+                jDoc = Jsoup.parse(warcRecord.content());
+            } catch (java.lang.OutOfMemoryError oom) {
+                System.err.println("jdoc oom " + id);
+                return 1;
+            } catch (Exception exception) {
                 System.err.println("jdoc exception " + id);
                 return 1;
             }
+
+//            jDoc = new JsoupParserWithTimeLimiter().tryJsoupParse(warcRecord.content());
+//            if(jDoc==null){
+//                System.err.println("jdoc exception " + id);
+//                return 1;
+//            }
 
 
             if(tag.equals(Tag.BoilerpipeArt)){
@@ -272,6 +272,7 @@ public class Indexer {
                     i += indexWarcRecord(wDoc);
                 }
             }
+
             return i;
         }
 
@@ -642,7 +643,7 @@ public class Indexer {
         long totalWarcFiles = warcFiles.size();
         System.out.println(totalWarcFiles + " many " + suffix + " files found under the docs path : " + docsPath.toString());
 
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < 500; i++) {
             if (!warcFiles.isEmpty())
                 executor.execute(new IndexerThread(writer, warcFiles.removeFirst()));
             else {
@@ -694,7 +695,7 @@ public class Indexer {
 
         System.out.println("outside while pool size = " + executor.getPoolSize() + " activeCount = " + executor.getActiveCount() + " completed task = " + executor.getCompletedTaskCount() + " task count = " + executor.getTaskCount());
 
-        int numIndexed = writer.maxDoc();
+        int numIndexed = writer.getDocStats().maxDoc;
 
         try {
             writer.commit();
@@ -719,9 +720,11 @@ public class Indexer {
      * @return number of indexed documents
      * @throws IOException if IO exception occurs
      */
-    public int indexParallel() throws IOException {
+    public int indexParallel(int numThreads) throws IOException {
 
         System.out.println("Parallel Indexing to directory '" + indexPath.toAbsolutePath() + "'...");
+
+        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "" + numThreads);
 
         final Directory dir = FSDirectory.open(indexPath);
 
@@ -737,7 +740,7 @@ public class Indexer {
 
         final String suffix = Collection.GOV2.equals(collection) ? ".gz" : ".warc.gz";
 
-        try (Stream<Path> stream = Files.find(docsPath, 3, new WarcMatcher(suffix))) {
+        try (Stream<Path> stream = Files.find(docsPath, 4, new WarcMatcher(suffix))) {
 
             stream.parallel().forEach(p -> {
                 new IndexerThread(writer, p).run();
@@ -745,7 +748,7 @@ public class Indexer {
 
         }
 
-        int numIndexed = writer.maxDoc();
+        int numIndexed = writer.getDocStats().maxDoc;
 
         try {
             writer.commit();

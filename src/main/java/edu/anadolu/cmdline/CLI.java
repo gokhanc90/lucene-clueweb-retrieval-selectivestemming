@@ -142,6 +142,10 @@ public final class CLI {
 
         tools.add(new SEOTool());
 
+        tools.add(new WikiTool());
+
+		tools.add(new CormakTool());
+
         tools.add(new SystemEvaluatorTool());
 
         tools.add(new AdHocExpTool());

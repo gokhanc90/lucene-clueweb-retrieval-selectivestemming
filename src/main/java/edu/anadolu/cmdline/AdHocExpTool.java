@@ -99,6 +99,32 @@ public class AdHocExpTool extends CmdLineTool {
 
         DataSet dataset = CollectionFactory.dataset(collection, tfd_home);
 
+        if ("riskGraph".equals(task)) {
+            final Evaluator evaluator = new Evaluator(dataset, Tag.NoStem.toString(), measure, models, "evals", "OR");
+            final Evaluator evaluatorS = new Evaluator(dataset, tag, measure, models, "evals", "OR");
+            List<InfoNeed> needs = evaluator.getNeeds();
+
+            for(String model:evaluator.getModelSet()) {
+                double[] N = evaluator.scoreArray(model, needs);
+                double[] S = evaluatorS.scoreArray(model, needs);
+                System.out.println(model);
+                System.out.println("NoStem\t"+tag);
+                int counterSame=0;
+                int counterN=0;
+                int counterS=0;
+                for(int i=0;i<N.length;i++){
+                    if(N[i]>S[i]) counterN++;
+                    else if(N[i]==S[i]) counterSame++;
+                    else counterS++;
+                    System.out.println(N[i]+"\t"+S[i]);
+
+                }
+                System.out.println("Number of Same:\t"+counterSame);
+                System.out.println("Number of NoStem:\t"+counterN);
+                System.out.println("Number of "+tag+":\t"+counterS);
+            }
+        }
+
 
         if ("resultSet".equals(task)) {
             final Evaluator evaluator = new Evaluator(dataset, Tag.NoStem.toString(), measure, models, "evals", "OR");

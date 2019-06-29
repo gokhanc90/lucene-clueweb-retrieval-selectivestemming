@@ -154,6 +154,7 @@ public class SemanticElements {
         for(SemanticTag tag:selectedTags){
             if(tag.getTag().compareTo(SemanticTag.HTMLTag.abbr)!=0) continue;
             String title=tag.findAttr("title").getRight();
+            if (title==null) continue;
             if(title.length() < 3) continue;
             String text=tag.getText().replaceAll("\\s+","_");
             abbrs.append(text).append(' ');

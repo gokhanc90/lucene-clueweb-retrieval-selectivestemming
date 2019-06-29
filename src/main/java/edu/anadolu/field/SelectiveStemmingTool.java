@@ -59,8 +59,8 @@ public class SelectiveStemmingTool extends CmdLineTool {
     @Option(name = "-KTT", required = false, usage = "Correlation threshold [-1...1]")
     protected double ktt = 0.99;
 
-    @Option(name = "-binDF", required = false, usage = "Number of bins for DF. Default: 1000 ")
-    protected int binDF = 1000;
+    @Option(name = "-numBin", required = false, usage = "Number of bins for DF. Default: 1000 ")
+    protected int numBin = 1000;
 
     @Option(name = "-residualNeeds", required = false, usage = "Removes ALL_SAME and ALL_ZERO")
     protected boolean residualNeeds = false;
@@ -95,7 +95,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
         }
 
         SelectionMethods.CorrThreshold=ktt;
-        SelectionMethods.TermTFDF.NumberOfBIN=binDF;
+        SelectionMethods.TermTFDF.NumberOfBIN=numBin;
 
         DataSet dataSet = CollectionFactory.dataset(collection, tfd_home);
 

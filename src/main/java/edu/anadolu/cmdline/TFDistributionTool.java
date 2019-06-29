@@ -81,7 +81,7 @@ public final class TFDistributionTool extends CmdLineTool {
                     String indexTag = indexPath.getFileName().toString();
                     // search for a specific tag, skip the rest
                     if (this.tag != null && !indexTag.equals(this.tag)) continue;
-                    
+
                     for (String field : fields) {
                         QueryFreqDistribution queryFreqDistribution = new QueryFreqDistribution(reader, freqsPath, binningStrategy, field, indexTag);
                         queryFreqDistribution.process(needs, indexTag, 10000);

@@ -1,9 +1,12 @@
 package edu.anadolu.field;
 
+import edu.anadolu.Boilerpipe;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
+import org.jsoup.select.Elements;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,10 +34,71 @@ public class MetaTest {
             "</head>\n" +
             "<body>\n" +
             "\n" +
+            "<nav>\n" +
+            "  <a href=\"/html/\">HTML</a> |\n" +
+            "  <a href=\"/css/\">CSS</a> |\n" +
+            "  <a href=\"/js/\">JavaScript</a> |\n" +
+            "  <a href=\"/jquery/\">jQuery</a>\n" +
+            "</nav>\n"+
             "<p>All meta information goes in the head section...</p>\n" +
+            "sdfds sdf dsf ds f dsf ds f dsf"+
             "\n" +
+            "<aside>\n" +
+            "  <h4>Epcot Center</h4>\n" +
+            "  <p>The Epcot Center is a theme park in Disney World, Florida.</p>\n" +
+            "</aside>\n"+
+            "<section>\n" +
+            "\n" +
+            "  <h1>Forest elephants</h1> \n" +
+            "\n" +
+            "  <section>\n" +
+            "<header>\n" +
+            "    <h1>What Does WWF Do?</h1>\n" +
+            "    <p>WWF's mission:</p>\n" +
+            "  </header>"+
+            "    <h1>Introduction</h1>\n" +
+            "    <p>In this section, we discuss the lesser known forest elephants.</p>\n" +
+            "  </section>\n" +
+            "\n" +
+            "  <section>\n" +
+            "    <h1>Habitat</h1>\n" +
+            "    <p>Forest elephants do not live in trees but among them.</p>\n" +
+            "  </section>\n" +
+            "\n" +
+            "  <aside>\n" +
+            "    <p>advertising block</p>\n" +
+            "  </aside>\n" +
+            "\n" +
+            "</section>\n" +
+            "\n" +
+            "<footer>\n" +
+            "  <p>(c) 2010 The Example company</p>\n" +
+            "</footer>"+
             "</body>\n" +
             "</html>";
+
+    @Test
+    public void testJSoupRemove() {
+        Document jDoc = Jsoup.parse(html);
+        System.out.println(jDoc.text());
+        Elements es = jDoc.select("footer,nav,aside");
+        for(Element e:es)
+           // System.out.println(e.text());
+        es.remove();
+        System.out.println(jDoc.text());
+        System.out.println(new StringBuilder().toString());
+    }
+
+    @Test
+    public void testJSoupGetTExt() {
+        Document jDoc = Jsoup.parse(html);
+        String stripped = jDoc.text();
+        System.out.println(jDoc.title());
+
+        String b = new Boilerpipe().articleExtractor(html);
+
+        System.out.println(b);
+    }
 
     @Test
     public void testMetaNames() {

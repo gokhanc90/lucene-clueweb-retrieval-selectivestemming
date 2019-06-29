@@ -89,7 +89,7 @@ public final class IndexerTool extends CmdLineTool {
         }
 
 
-        final int numThreads = Integer.parseInt(props.getProperty("numThreads", "2"));
+        final int numThreads = props.containsKey("numThreads") ? Integer.parseInt(props.getProperty("numThreads")) : Runtime.getRuntime().availableProcessors();
 
         if (docsPath == null || indexPath == null) {
             System.out.println(getHelp());
@@ -118,7 +118,7 @@ public final class IndexerTool extends CmdLineTool {
                 .useScripts(script)
                 .useSemanticElements(semantic);
         Indexer indexer = new Indexer(dataset, docsPath, indexPath, solr, tag, config);
-        int numIndexed = indexer.indexWithThreads(numThreads);
+        int numIndexed = indexer.indexParallel(numThreads);
         if (semantic) SemanticStats.getSemanticObject().printSemanticStats();
         System.out.println("Total " + numIndexed + " documents indexed in " + execution(start));
     }
