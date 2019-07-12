@@ -14,6 +14,7 @@ import edu.anadolu.eval.Evaluator;
 import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.freq.FreqBinning;
 import edu.anadolu.knn.Measure;
+import edu.anadolu.stats.TermStats;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.stat.inference.ChiSquareTest;
 import org.apache.commons.math3.util.Pair;
@@ -50,6 +51,70 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 
 public class Test {
+    @org.junit.Test
+    public void tie(){
+        SelectionMethods.TermTFDF.NumberOfBIN=10;
+        SelectionMethods.TermTFDF.maxDF=100;
+
+        ArrayList<SelectionMethods.TermTFDF> listTermTag1 = new ArrayList<SelectionMethods.TermTFDF>();
+        ArrayList<SelectionMethods.TermTFDF> listTermTag2 = new ArrayList<SelectionMethods.TermTFDF>();
+        int l1[]={10,20,20,30,30};
+        int l2[]={10,30,20,50,30};
+        for (int i = 0; i < 5; i++) {
+            SelectionMethods.TermTFDF termTFDF = new SelectionMethods.TermTFDF(i);
+            termTFDF.setDF(l1[i]);
+            listTermTag1.add(termTFDF);
+        }
+
+        for (int i = 0; i < 5; i++) {
+            SelectionMethods.TermTFDF termTFDF = new SelectionMethods.TermTFDF(i);
+            termTFDF.setDF(l2[i]);
+            listTermTag2.add(termTFDF);
+        }
+
+        listTermTag1.sort(Comparator.comparingInt(SelectionMethods.TermTFDF::getBinDF));
+        listTermTag2.sort(Comparator.comparingInt(SelectionMethods.TermTFDF::getBinDF));
+
+        listTermTag1.stream().forEach(t->System.out.print(t.getBinDF()+" "));
+        System.out.println();
+        listTermTag1.stream().forEach(t->System.out.print(t.getIndexID()+" "));
+        System.out.println();
+        System.out.println();
+        listTermTag2.stream().forEach(t->System.out.print(t.getBinDF()+" "));
+        System.out.println();
+        listTermTag2.stream().forEach(t->System.out.print(t.getIndexID()+" "));
+        System.out.println();
+        System.out.println();
+        System.out.println(compareTie(listTermTag1,listTermTag2));
+    }
+    boolean compareTie(ArrayList<SelectionMethods.TermTFDF> l1, ArrayList<SelectionMethods.TermTFDF> l2){
+
+        for(int i=0;i<l1.size();i++){
+            int p1=i,p2=i;
+            int s1=1,s2=1;
+            while (true){
+                if(l1.get(p1).getIndexID() == l2.get(p2).getIndexID()){
+                    p1++;
+                    p2++;
+                    break;
+                }else {
+                    if(p1==l1.size()-1 || p2==l2.size()-1 ) return false;
+
+                    if (l1.get(p1).getBinDF() == l1.get(p1 + s1).getBinDF()) {
+                        Collections.swap(l1, p1, p1 + s1);
+                        s1++;
+                    } else if (l2.get(p2).getBinDF() == l2.get(p2 + s2).getBinDF()) {
+                        Collections.swap(l1, p2, p2 + s2);
+                        s2++;
+                    }
+                    else return false;
+                }
+            }
+            if(i==l1.size()-1) return true;
+        }
+        return false;
+    }
+
     @org.junit.Test
     public void math() throws IOException {
         System.out.println(Math.ceil(16*6.0/100));
