@@ -436,6 +436,27 @@ public class SelectionMethods {
         listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
         listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
 
+        boolean tie=false;
+        for(int i=1; i<listTermTag1.size(); i++){
+            if(listTermTag1.get(i-1).getBinDF()== listTermTag1.get(i).getBinDF()){
+                tie=true;
+                break;
+            }
+        }
+
+        if(!tie) {
+            for (int i = 1; i < listTermTag2.size(); i++) {
+                if (listTermTag2.get(i-1).getBinDF() == listTermTag2.get(i).getBinDF()) {
+                    tie = true;
+                    break;
+                }
+            }
+        }
+
+
+        System.err.print(String.format("Tie_%s\t",tie));
+
+
         boolean orderChanged = false;
         for(int i=0; i<listTermTag1.size(); i++){
             if(listTermTag1.get(i).getIndexID()!= listTermTag2.get(i).getIndexID()){

@@ -356,7 +356,17 @@ public class Indexer {
     }
 
     /**
-     * Skip certain documents that hang Jsoup.parse method
+     * Skip certain documents that hang JSoup.parse method.
+     * Query relevance judgments of the ClueWeb12 dataset does not contain these documents, so skipping them is safe.
+     * See open ticket : https://github.com/jhy/jsoup/issues/1192
+     * Here are some binary files that hang JSoup.
+     *
+     * <p>
+     * clueweb12-1100wb-15-21376 http://csr.bu.edu/colortracking/data/test-sequences/sequence15.mv
+     * clueweb12-1100wb-15-21381 http://csr.bu.edu/colortracking/data/test-sequences/sequence4.mv
+     * clueweb12-1013wb-14-21356 http://www.geowall.org/data/3Dgeology/dem/helens.pfb
+     * clueweb12-0200wb-38-08218 http://www.innovative-dsp.com/ftp/MIT/x6_400m_lx240t-ff1156.bit 9229029
+     * clueweb12-0200wb-38-08219 http://www.innovative-dsp.com/ftp/MIT/x6_400m_sx315t-ff1156.bit 9975121
      *
      * @param docId document identifier
      * @return true if the document should be skipped
