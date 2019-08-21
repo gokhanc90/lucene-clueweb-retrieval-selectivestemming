@@ -118,8 +118,8 @@ public class CormakEvaluator extends Evaluator {
         return paths;
     }
 
-    @Override
-    protected String getRunTag(Path path) {
+
+    public static String getRunTag(Path path) {
         return path.getFileName().toString();
     }
 }

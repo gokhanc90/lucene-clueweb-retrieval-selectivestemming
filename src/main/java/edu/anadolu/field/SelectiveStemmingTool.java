@@ -44,7 +44,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
     }
 
     @Option(name = "-models", metaVar = "all|custom as in usage", required = false, usage = "ex:BM25k1.5b0.5_PL2c3.5_LGDc1.5_DirichletLMc500")
-    protected String models = "all";
+    protected String models = "BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_DFRee_DFIC_DLH13"; //Default values
 
     @Option(name = "-metric", required = false, usage = "Effectiveness measure")
     protected Measure measure = Measure.NDCG20;

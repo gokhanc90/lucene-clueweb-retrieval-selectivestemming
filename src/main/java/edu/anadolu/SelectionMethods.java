@@ -1,14 +1,20 @@
 package edu.anadolu;
 
+import com.google.common.collect.Ordering;
+import edu.anadolu.eval.SystemScore;
 import edu.anadolu.freq.FreqBinning;
 import edu.anadolu.qpp.Aggregate;
 import edu.anadolu.stats.TermStats;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.commons.math3.stat.inference.ChiSquareTest;
+import org.apache.commons.math3.stat.inference.TTest;
+import org.paukov.combinatorics3.Generator;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * If a change is occurred either order or specific term due to the freq. , select NoStem.
@@ -19,8 +25,8 @@ public class SelectionMethods {
     public enum SelectionTag {
 
         MSTTF, MSTDF, LSTDF, LSTTF, TFOrder, DFOrder, KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
-        TFOrderBinning, DFOrderBinning, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, ChiSqureDF,
-        ChiSqureTF, ChiSqureTFIDF,ChiSqureAggDFTF, Features;
+        TFOrderBinning, DFOrderBinning, DFOrderBinningTie, TTestDF, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, ChiSqureDF,
+        ChiSqureTF, ChiSqureTFIDF,ChiSqureAggDFTF, ComLOS, ComLOD, ComMajor,Features;
 
         public static SelectionTag tag(String selectionTag) {
            return valueOf(selectionTag);
@@ -105,9 +111,14 @@ public class SelectionMethods {
             case MSTDFBinning: return MSTDFBinning(tagTermTermStats, tagsArr);
             case TFOrderBinning: return TFOrderBinning(tagTermTermStats, tagsArr);
             case DFOrderBinning: return DFOrderBinning(tagTermTermStats, tagsArr);
+            case DFOrderBinningTie: return DFOrderBinningTie(tagTermTermStats, tagsArr);
             case KendallTauTFOrderBinning: return KendallTauTFOrderBinning(tagTermTermStats, tagsArr);
             case KendallTauDFOrderBinning: return KendallTauDFOrderBinning(tagTermTermStats, tagsArr);
             case ChiSqureDF: return ChiSqureDF(tagTermTermStats, tagsArr);
+            case TTestDF: return TTestDF(tagTermTermStats, tagsArr);
+            case ComLOS: return ComLOS(tagTermTermStats, tagsArr);
+            case ComLOD: return ComLOD(tagTermTermStats, tagsArr);
+            case ComMajor: return ComMajor(tagTermTermStats, tagsArr);
             case ChiSqureTF: return ChiSqureTF(tagTermTermStats, tagsArr);
             case ChiSqureTFIDF: return ChiSqureTFIDF(tagTermTermStats, tagsArr);
             case ChiSqureAggDFTF: return ChiSqureAggDFTF(tagTermTermStats, tagsArr);
@@ -116,6 +127,88 @@ public class SelectionMethods {
 
             default: throw new AssertionError(SelectionMethods.class);
         }
+    }
+
+    private static String ComMajor(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        if(combinatorics(listTermTag1,listTermTag2,"majoritySame"))  return tagsArr[1]; //stem
+        else  return tagsArr[0]; //nostem
+
+    }
+
+
+    private static String ComLOS(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        if(combinatorics(listTermTag1,listTermTag2,"atLeastOneSame"))  return tagsArr[1]; //stem
+        else  return tagsArr[0]; //nostem
+
+    }
+
+    private static String ComLOD(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        if(combinatorics(listTermTag1,listTermTag2,"atLeastOneDiff"))  return tagsArr[0]; //notem
+        else  return tagsArr[1]; //stem
+
     }
 
     private static String ChiSqureAggDFTF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
@@ -229,8 +322,30 @@ public class SelectionMethods {
             listTermTag2.add(termTFDF);
         }
 
-        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.TF).map(v -> v==0 ? 1:v).toArray();
-        long[] obs2 = listTermTag2.stream().mapToLong(t->t.TF).map(v -> v==0 ? 1:v).toArray();
+
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinTF(), t2.getBinTF()));
+
+        long[] obs1 = new long[listTermTag1.size()];
+        int order=1;
+        obs1[0]=order;
+        for(int i=1;i<listTermTag1.size();i++) {
+            if (listTermTag1.get(i).getBinTF() == listTermTag1.get(i - 1).getBinTF())
+                obs1[i] = order;
+            else
+                obs1[i]=++order;
+        }
+
+        long[] obs2 = new long[listTermTag2.size()];
+        order=1;
+        obs2[0]=order;
+        for(int i=1;i<listTermTag2.size();i++) {
+            if (listTermTag2.get(i).getBinTF() == listTermTag2.get(i - 1).getBinTF())
+                obs2[i] = order;
+            else
+                obs2[i]=++order;
+        }
+
 
         ChiSquareTest chi = new ChiSquareTest();
         double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
@@ -243,6 +358,60 @@ public class SelectionMethods {
         if(isSig) return tagsArr[0]; //No_Stem
         return tagsArr[1];
     }
+
+    private static String TTestDF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        double[] obs1 = new double[listTermTag1.size()];
+        int order=1;
+        obs1[0]=order;
+        for(int i=1;i<listTermTag1.size();i++) {
+            if (listTermTag1.get(i).getBinDF() == listTermTag1.get(i - 1).getBinDF())
+                obs1[i] = order;
+            else
+                obs1[i]=++order;
+        }
+
+        double[] obs2 = new double[listTermTag2.size()];
+        order=1;
+        obs2[0]=order;
+        for(int i=1;i<listTermTag2.size();i++) {
+            if (listTermTag2.get(i).getBinDF() == listTermTag2.get(i - 1).getBinDF())
+                obs2[i] = order;
+            else
+                obs2[i]=++order;
+        }
+
+        //long[] obs1 = listTermTag1.stream().mapToLong(t -> t.getIndexID()+1).toArray();
+        //long[] obs2 = listTermTag2.stream().mapToLong(t -> t.getIndexID()+1).toArray();
+        TTest tTest = new TTest();
+        boolean isSig = tTest.pairedTTest(obs1, obs2, 0.05);
+
+        if(isSig) return tagsArr[0]; //No_Stem
+        return tagsArr[1];
+
+    }
+
 
     private static String ChiSqureDF(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
         ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
@@ -264,8 +433,31 @@ public class SelectionMethods {
             listTermTag2.add(termTFDF);
         }
 
-        long[] obs1 = listTermTag1.stream().mapToLong(t -> t.DF).map(v -> v==0 ? 1:v).toArray();
-        long[] obs2 = listTermTag2.stream().mapToLong(t->t.DF).map(v -> v==0 ? 1:v).toArray();
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        long[] obs1 = new long[listTermTag1.size()];
+        int order=1;
+        obs1[0]=order;
+        for(int i=1;i<listTermTag1.size();i++) {
+            if (listTermTag1.get(i).getBinDF() == listTermTag1.get(i - 1).getBinDF())
+                obs1[i] = order;
+            else
+                obs1[i]=++order;
+        }
+
+        long[] obs2 = new long[listTermTag2.size()];
+        order=1;
+        obs2[0]=order;
+        for(int i=1;i<listTermTag2.size();i++) {
+            if (listTermTag2.get(i).getBinDF() == listTermTag2.get(i - 1).getBinDF())
+                obs2[i] = order;
+            else
+                obs2[i]=++order;
+        }
+
+        //long[] obs1 = listTermTag1.stream().mapToLong(t -> t.getIndexID()+1).toArray();
+        //long[] obs2 = listTermTag2.stream().mapToLong(t -> t.getIndexID()+1).toArray();
 
         ChiSquareTest chi = new ChiSquareTest();
         double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
@@ -273,6 +465,7 @@ public class SelectionMethods {
         boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
 
         //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
+        System.err.print(Arrays.toString(obs1)+"\t"+Arrays.toString(obs2)+"\t");
         System.err.print(String.format("pVal: \t%f\t",pval));
         System.err.print(String.format("ChiS: \t%f\t",ChiS));
         if(isSig) return tagsArr[0]; //No_Stem
@@ -364,7 +557,7 @@ public class SelectionMethods {
 //        }
 //        else {
             double val;
-            if((val=KendallVal(listTermTag1,listTermTag2,1))-CorrThreshold >=0 ){
+            if((val=KendallVal(listTermTag1,listTermTag2,4))-CorrThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
@@ -403,7 +596,7 @@ public class SelectionMethods {
 //        }
 //        else {
             double val;
-            if((val=KendallVal(listTermTag1,listTermTag2,1))-CorrThreshold >=0 ){
+            if((val=KendallVal(listTermTag1,listTermTag2,5))-CorrThreshold >=0 ){
                 System.err.print(String.format("%s\tKendalVal: %f\t","NotChanged",val));
                 return tagsArr[1]; //korelasyon var KStem
             }
@@ -412,6 +605,60 @@ public class SelectionMethods {
                 return tagsArr[0];
             }
 //        }
+
+    }
+
+    private static String DFOrderBinningTie(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setDF(tsList.get(i).docFreq());
+            listTermTag2.add(termTFDF);
+        }
+
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        boolean tie=false;
+        for(int i=1; i<listTermTag1.size(); i++){
+            if(listTermTag1.get(i-1).getBinDF()== listTermTag1.get(i).getBinDF()){
+                tie=true;
+                break;
+            }
+        }
+
+        if(!tie) {
+            for (int i = 1; i < listTermTag2.size(); i++) {
+                if (listTermTag2.get(i-1).getBinDF() == listTermTag2.get(i).getBinDF()) {
+                    tie = true;
+                    break;
+                }
+            }
+        }
+
+
+        System.err.print(String.format("Tie_%s\t",tie));
+
+
+        boolean isequal=compareTie(listTermTag1,listTermTag2);
+        if(isequal){
+            System.err.print(String.format("%s\t","NotChanged"));
+            return tagsArr[1];
+        }
+        else{
+            System.err.print(String.format("%s\t","Changed"));
+            return tagsArr[0]; //NoStem
+        }
 
     }
 
@@ -840,32 +1087,34 @@ public class SelectionMethods {
             listTermTag2.add(termTFDF);
         }
 
-        double[] v1 = new double[2*listTermTag1.size()];
-        double[] v2 = new double[2*listTermTag2.size()];
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
 
-        double tfSum1=0.0,tfSum2=0.0,dfSum1=0.0,dfSum2=0.0;
-
-        for(int i=0;i<listTermTag1.size();i++){
-            v1[i]=listTermTag1.get(i).getDF()/(double)TermTFDF.maxDF;
-            dfSum1+=v1[i];
-            v1[i+1]=listTermTag1.get(i).getTF()/(double)TermTFDF.maxTF;
-            tfSum1+=v1[i+1];
+        double[] obs1 = new double[listTermTag1.size()];
+        int order=1;
+        obs1[0]=order;
+        for(int i=1;i<listTermTag1.size();i++) {
+            if (listTermTag1.get(i).getBinDF() == listTermTag1.get(i - 1).getBinDF())
+                obs1[i] = order;
+            else
+                obs1[i]=++order;
         }
 
-        for(int i=0;i<listTermTag2.size();i++){
-            v2[i]=listTermTag2.get(i).getDF()/(double)TermTFDF.maxDF;
-            dfSum2+=v2[i];
-            v2[i+1]=listTermTag2.get(i).getTF()/(double)TermTFDF.maxTF;
-            tfSum2+=v2[i+1];
+        double[] obs2 = new double[listTermTag2.size()];
+        order=1;
+        obs2[0]=order;
+        for(int i=1;i<listTermTag2.size();i++) {
+            if (listTermTag2.get(i).getBinDF() == listTermTag2.get(i - 1).getBinDF())
+                obs2[i] = order;
+            else
+                obs2[i]=++order;
         }
 
-        double[] v11 = {dfSum1,tfSum1};
-        double[] v22 = {dfSum2,tfSum2};
 
-        double cosine_sim = Utils.cosineSim(v11, v22);
+        double cosine_sim = Utils.cosineSim(obs1, obs2);
 
-        System.err.print(Arrays.deepToString(ArrayUtils.toObject(v11))); //print part1
-        System.err.print(Arrays.deepToString(ArrayUtils.toObject(v22))); //print part1
+        System.err.print(Arrays.deepToString(ArrayUtils.toObject(obs1))); //print part1
+        System.err.print(Arrays.deepToString(ArrayUtils.toObject(obs2))); //print part1
 
 
         if(cosine_sim<CorrThreshold){
@@ -873,7 +1122,7 @@ public class SelectionMethods {
             return tagsArr[0]; //NoStem
         }
         else{
-            System.err.print(String.format("\t%s\t%f\t","KStem: cosine_sim",cosine_sim)); //print part1
+            System.err.print(String.format("\t%s\t%f\t","Stem: cosine_sim",cosine_sim)); //print part1
             return tagsArr[1]; //Stem
         }
 
@@ -1039,6 +1288,47 @@ public class SelectionMethods {
             for (int i = 0; i < v1.length; ++i) v1[i] = l1.get(i).getBinTF();
             for (int i = 0; i < v2.length; ++i) v2[i] = l2.get(i).getBinTF();
         }
+
+        if(opt==4){
+            int order=1;
+            v1[0]=order;
+            for(int i=1;i<l1.size();i++) {
+                if (l1.get(i).getBinDF() == l1.get(i - 1).getBinDF())
+                    v1[i] = order;
+                else
+                    v1[i]=++order;
+            }
+
+            order=1;
+            v2[0]=order;
+            for(int i=1;i<l2.size();i++) {
+                if (l2.get(i).getBinDF() == l2.get(i - 1).getBinDF())
+                    v2[i] = order;
+                else
+                    v2[i]=++order;
+            }
+        }
+
+        if(opt==5){
+            int order=1;
+            v1[0]=order;
+            for(int i=1;i<l1.size();i++) {
+                if (l1.get(i).getBinTF() == l1.get(i - 1).getBinTF())
+                    v1[i] = order;
+                else
+                    v1[i]=++order;
+            }
+
+            order=1;
+            v2[0]=order;
+            for(int i=1;i<l2.size();i++) {
+                if (l2.get(i).getBinTF() == l2.get(i - 1).getBinTF())
+                    v2[i] = order;
+                else
+                    v2[i]=++order;
+            }
+        }
+
         if(Arrays.equals(v1, v2)) return 1;
         //if(Arrays.stream(v1).allMatch(d -> d == v1[0])) v1[0]=v1[0]-1;
         //if(Arrays.stream(v2).allMatch(d -> d==v2[0])) v2[0]=v2[0]-1;
@@ -1046,4 +1336,90 @@ public class SelectionMethods {
         double tau = corr.correlation(v1,v2);
         return tau;
     }
+    static boolean  compareTie(ArrayList<SelectionMethods.TermTFDF> l1, ArrayList<SelectionMethods.TermTFDF> l2){
+
+        for(int i=0;i<l1.size();i++){
+            int p1=i,p2=i;
+            int s1=1,s2=1;
+            while (true){
+                if(l1.get(p1).getIndexID() == l2.get(p2).getIndexID()){
+                    p1++;
+                    p2++;
+                    break;
+                }else {
+                    if(p1==l1.size()-1 || p2==l2.size()-1 ) return false;
+
+                    if (l1.get(p1).getBinDF() == l1.get(p1 + s1).getBinDF()) {
+                        Collections.swap(l1, p1, p1 + s1);
+                        s1++;
+                    } else if (l2.get(p2).getBinDF() == l2.get(p2 + s2).getBinDF()) {
+                        Collections.swap(l2, p2, p2 + s2);
+                        s2++;
+                    }
+                    else return false;
+                }
+            }
+            if(i==l1.size()-1) return true;
+        }
+        return false;
+    }
+
+    private static boolean combinatorics(ArrayList<SelectionMethods.TermTFDF> listTermTag1, ArrayList<SelectionMethods.TermTFDF> listTermTag2, String method){
+        List<List<SelectionMethods.TermTFDF>>perm1= Generator.permutation(listTermTag1)
+                .simple()
+                .stream()
+                .collect(toList());
+
+        List<List<SelectionMethods.TermTFDF>>perm2=Generator.permutation(listTermTag2)
+                .simple()
+                .stream()
+                .collect(toList());
+
+
+        Iterator<List<SelectionMethods.TermTFDF>> it = perm1.iterator();
+
+        while(it.hasNext()) {
+            List<SelectionMethods.TermTFDF> l = it.next();
+            if(!Ordering.from(Comparator.comparing(SelectionMethods.TermTFDF::getBinDF)).isOrdered(l))
+                it.remove();
+        }
+
+        it = perm2.iterator();
+
+        while(it.hasNext()) {
+            List<SelectionMethods.TermTFDF> l = it.next();
+            if(!Ordering.from(Comparator.comparing(SelectionMethods.TermTFDF::getBinDF)).isOrdered(l))
+                it.remove();
+        }
+
+        List<List<List<SelectionMethods.TermTFDF>>> cartesianProduct = Generator.cartesianProduct(perm1,perm2).stream().collect(toList());
+
+        int same=0,dif=0, m=cartesianProduct.size();
+        for (List<List<SelectionMethods.TermTFDF>> matches: cartesianProduct) {
+            boolean orderChanged = false;
+            for(int i=0; i<matches.get(0).size(); i++){
+                if(matches.get(0).get(i).getIndexID()!= matches.get(1).get(i).getIndexID()){
+                    orderChanged = true;
+                    break;
+                }
+            }
+            if (orderChanged) dif++;
+            else same++;
+
+
+        }
+        System.err.print("\tSame:\t"+same+"\tdiff:\t"+dif+"\tmatches:\t"+m+"\t");
+        if("atLeastOneSame".equals(method)){
+            if(same>0) return true;
+            return false;
+        }else if("majoritySame".equals(method)){
+            if(same>=dif) return true;
+            return false;
+        }else if("atLeastOneDiff".equals(method)){
+            if(dif>0) return true;
+            return false;
+        }
+        throw new RuntimeException("invalid method name");
+    }
+
 }

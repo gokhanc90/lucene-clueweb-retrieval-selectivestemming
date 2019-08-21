@@ -1,6 +1,7 @@
 package edu.anadolu;
 
 
+import com.google.common.collect.Ordering;
 import com.google.common.util.concurrent.SimpleTimeLimiter;
 import com.google.common.util.concurrent.TimeLimiter;
 import edu.anadolu.analysis.Analyzers;
@@ -14,9 +15,11 @@ import edu.anadolu.eval.Evaluator;
 import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.freq.FreqBinning;
 import edu.anadolu.knn.Measure;
+import edu.anadolu.similarities.DPH;
 import edu.anadolu.stats.TermStats;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.stat.inference.ChiSquareTest;
+import org.apache.commons.math3.stat.inference.TTest;
 import org.apache.commons.math3.util.Pair;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -31,6 +34,7 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.clueweb09.ClueWeb12WarcRecord;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.paukov.combinatorics3.Generator;
 
 import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
@@ -48,9 +52,28 @@ import java.util.zip.GZIPInputStream;
 
 import static edu.anadolu.Indexer.BUFFER_SIZE;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 
 
 public class Test {
+    @org.junit.Test
+    public void DPHbased(){
+        DPH dph = new DPH();
+        double v1[]= new double[4];
+        double v2[]= new double[4];
+        v1[0]=dph.score(462646,25170677* 867L,867,462646/21829940236.0,210312,462646,25170677,4);
+        v1[1]=dph.score(213001588,25170677* 867L,867,213001588/21829940236.0,16003913,213001588,25170677,4);
+        v1[2]=dph.score(269314458,25170677* 867L,867,269314458/21829940236.0,15791348,269314458,25170677,4);
+        v1[3]=dph.score(820670,25170677* 867L,867,820670/21829940236.0,203064,820670,25170677,4);
+
+        v2[0]=dph.score(3506521,25170677* 867L,867,3506521/21829940236.0,1145714,3506521,25170677,4);
+        v2[1]=dph.score(213004837,25170677* 867L,867,213004837/21829940236.0,16004065,213004837,25170677,4);
+        v2[2]=dph.score(269378503,25170677* 867L,867,269378503/21829940236.0,15792132,269378503,25170677,4);
+        v2[3]=dph.score(3087935,25170677* 867L,867,3087935/21829940236.0,584652,3087935,25170677,4);
+
+        System.out.println(Arrays.toString(v1)+" "+Arrays.toString(v2));
+        System.out.println(Utils.cosineSim(v1,v2));
+    }
     @org.junit.Test
     public void tie(){
         SelectionMethods.TermTFDF.NumberOfBIN=10;
@@ -58,15 +81,15 @@ public class Test {
 
         ArrayList<SelectionMethods.TermTFDF> listTermTag1 = new ArrayList<SelectionMethods.TermTFDF>();
         ArrayList<SelectionMethods.TermTFDF> listTermTag2 = new ArrayList<SelectionMethods.TermTFDF>();
-        int l1[]={10,20,20,30,30};
-        int l2[]={10,30,20,50,30};
-        for (int i = 0; i < 5; i++) {
+        int l1[]={10,10,10,10,10,10,10,10,10,10};
+        int l2[]={10,10,10,10,10,10,10,10,10,10};
+        for (int i = 0; i < 10; i++) {
             SelectionMethods.TermTFDF termTFDF = new SelectionMethods.TermTFDF(i);
             termTFDF.setDF(l1[i]);
             listTermTag1.add(termTFDF);
         }
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             SelectionMethods.TermTFDF termTFDF = new SelectionMethods.TermTFDF(i);
             termTFDF.setDF(l2[i]);
             listTermTag2.add(termTFDF);
@@ -85,10 +108,93 @@ public class Test {
         listTermTag2.stream().forEach(t->System.out.print(t.getIndexID()+" "));
         System.out.println();
         System.out.println();
-        System.out.println(compareTie(listTermTag1,listTermTag2));
+        combinatorics(listTermTag1,listTermTag2);
+    }
+    void combinatorics(ArrayList<SelectionMethods.TermTFDF> listTermTag1, ArrayList<SelectionMethods.TermTFDF> listTermTag2){
+        List<List<SelectionMethods.TermTFDF>>perm1=Generator.permutation(listTermTag1)
+                .simple()
+                .stream()
+                .collect(toList());
+
+        List<List<SelectionMethods.TermTFDF>>perm2=Generator.permutation(listTermTag2)
+                .simple()
+                .stream()
+                .collect(toList());
+
+
+        Iterator<List<SelectionMethods.TermTFDF>> it = perm1.iterator();
+
+        while(it.hasNext()) {
+            List<SelectionMethods.TermTFDF> l = it.next();
+            if(!Ordering.from(Comparator.comparing(SelectionMethods.TermTFDF::getBinDF)).isOrdered(l))
+                it.remove();
+        }
+
+        it = perm2.iterator();
+
+        while(it.hasNext()) {
+            List<SelectionMethods.TermTFDF> l = it.next();
+            if(!Ordering.from(Comparator.comparing(SelectionMethods.TermTFDF::getBinDF)).isOrdered(l))
+                it.remove();
+        }
+
+        List<List<List<SelectionMethods.TermTFDF>>> cartesianProduct = Generator.cartesianProduct(perm1,perm2).stream().collect(toList());
+
+        int same=0,dif=0, m=cartesianProduct.size();
+        for (List<List<SelectionMethods.TermTFDF>> matches: cartesianProduct) {
+            boolean orderChanged = false;
+            for(int i=0; i<matches.get(0).size(); i++){
+                if(matches.get(0).get(i).getIndexID()!= matches.get(1).get(i).getIndexID()){
+                    orderChanged = true;
+                    break;
+                }
+            }
+            if (orderChanged) dif++;
+            else same++;
+
+
+        }
+        System.out.println("Same: "+same+" diff: "+dif+" matches: "+m);
+
+    }
+    void chi(ArrayList<SelectionMethods.TermTFDF> listTermTag1, ArrayList<SelectionMethods.TermTFDF> listTermTag2){
+        listTermTag1.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+        listTermTag2.sort((t1, t2) -> Integer.compare(t1.getBinDF(), t2.getBinDF()));
+
+        long[] obs1 = new long[listTermTag1.size()];
+        int order=1;
+        obs1[0]=order;
+        for(int i=1;i<listTermTag1.size();i++) {
+            if (listTermTag1.get(i).getBinDF() == listTermTag1.get(i - 1).getBinDF())
+                obs1[i] = order;
+            else
+                obs1[i]=++order;
+        }
+
+        long[] obs2 = new long[listTermTag2.size()];
+        order=1;
+        obs2[0]=order;
+        for(int i=1;i<listTermTag2.size();i++) {
+            if (listTermTag2.get(i).getBinDF() == listTermTag2.get(i - 1).getBinDF())
+                obs2[i] = order;
+            else
+                obs2[i]=++order;
+        }
+
+        ChiSquareTest chi = new ChiSquareTest();
+        double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        double ChiS=chi.chiSquareDataSetsComparison(obs1,obs2);
+        boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
+
+        //If p_val is lower than 0.05, then two list is significantly different (order change); so return No_Stem
+        System.err.print(Arrays.toString(obs1)+"\t"+Arrays.toString(obs2)+"\t");
+        System.err.print(String.format("pVal: \t%f\t",pval));
+        System.err.print(String.format("ChiS: \t%f\t",ChiS));
+        System.err.print(String.format("significant: \t%s\t",isSig));
     }
     boolean compareTie(ArrayList<SelectionMethods.TermTFDF> l1, ArrayList<SelectionMethods.TermTFDF> l2){
 
+        int eq=0,neq=0;
         for(int i=0;i<l1.size();i++){
             int p1=i,p2=i;
             int s1=1,s2=1;
@@ -103,9 +209,13 @@ public class Test {
                     if (l1.get(p1).getBinDF() == l1.get(p1 + s1).getBinDF()) {
                         Collections.swap(l1, p1, p1 + s1);
                         s1++;
+                        if(checkEq(l1,l2)) eq++;
+                        else neq++;
                     } else if (l2.get(p2).getBinDF() == l2.get(p2 + s2).getBinDF()) {
-                        Collections.swap(l1, p2, p2 + s2);
+                        Collections.swap(l2, p2, p2 + s2);
                         s2++;
+                        if(checkEq(l1,l2)) eq++;
+                        else neq++;
                     }
                     else return false;
                 }
@@ -113,6 +223,16 @@ public class Test {
             if(i==l1.size()-1) return true;
         }
         return false;
+    }
+    boolean checkEq(ArrayList<SelectionMethods.TermTFDF> l1, ArrayList<SelectionMethods.TermTFDF> l2){
+        boolean orderChanged = false;
+        for(int i=0; i<l1.size(); i++){
+            if(l1.get(i).getIndexID()!= l2.get(i).getIndexID()){
+                orderChanged = true;
+                break;
+            }
+        }
+        return !orderChanged;
     }
 
     @org.junit.Test
@@ -394,8 +514,8 @@ public class Test {
 
     @org.junit.Test
     public void testChiSquare() {
-        long[] obs1 = {1057591  ,8131162  ,2261521  };
-        long[] obs2 = {1050256  ,7362290  ,1617979  };
+        long[] obs1 = {1  ,2  ,3  };
+        long[] obs2 = {3  ,2  ,1  };
 
         ChiSquareTest chi = new ChiSquareTest();
         //boolean isSig=chi.chiSquareTest(exp,obs,0.05);
@@ -405,6 +525,15 @@ public class Test {
 
     }
 
+    @org.junit.Test
+    public void testTTest() {
+        double[] obs1 = {0  ,3  ,4 };
+        double[] obs2 = {1  ,2  ,3};
+
+        TTest tTest = new TTest();
+        System.out.println(tTest.pairedT(obs1, obs2));
+
+    }
 
     @org.junit.Test
     public void testAnalyzer() {

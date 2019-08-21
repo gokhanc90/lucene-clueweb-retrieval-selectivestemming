@@ -13,10 +13,7 @@ import org.apache.lucene.search.similarities.ModelBase;
 import org.kohsuke.args4j.Option;
 
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CustomTool extends CmdLineTool {
