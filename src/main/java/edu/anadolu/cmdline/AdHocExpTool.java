@@ -13,6 +13,7 @@ import edu.anadolu.similarities.DFIC;
 import edu.anadolu.similarities.DFRee;
 import edu.anadolu.similarities.DLH13;
 import edu.anadolu.similarities.DPH;
+import edu.anadolu.stats.TermStats;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -125,7 +126,31 @@ public class AdHocExpTool extends CmdLineTool {
             }
         }
 
+        if("ctiTable".equals(task)){
+            final Evaluator evaluator = new Evaluator(dataset, Tag.NoStem.toString(), measure, models, "evals", "OR");
 
+            QuerySelector querySelector = new QuerySelector(dataset, tag);
+            Analyzer analyzer = Analyzers.analyzer(Tag.tag(tag));
+            for (InfoNeed need : querySelector.allQueries) {
+                StringBuilder br = new StringBuilder();
+                double ctiSqrt=0.0;
+                for (String t : need.getPartialQuery()) {
+                    List<String> stems = Analyzers.getAnalyzedTokens(t, analyzer);
+                    //if (stems.size() == 0) continue;
+                    String keyTerm = stems.get(0);
+                    TermStats termStats = querySelector.termStatisticsMap.get(keyTerm);
+                    if (termStats == null) {
+                        //System.out.println(tag+" index does not contain the term: "+ term);
+                        termStats = new TermStats(t,0,0,0);//indexes do not contain query term
+                        //throw new RuntimeException("Term stats cannot be null: "+ term );
+                    }
+                    ctiSqrt+= termStats.cti() * termStats.cti();
+                    br.append(termStats.cti() + "\t");
+                }
+                System.out.println(need.id() + "\t" + need.query() + "\t" +  Math.sqrt(ctiSqrt) + "\t" + br.toString());
+            }
+            return;
+        }
         if ("resultSet".equals(task)) {
             final Evaluator evaluator = new Evaluator(dataset, Tag.NoStem.toString(), measure, models, "evals", "OR");
             final Evaluator evaluatorS = new Evaluator(dataset, tag, measure, models, "evals", "OR");
@@ -254,7 +279,7 @@ public class AdHocExpTool extends CmdLineTool {
                 System.out.println("Query and term commonality");
                 for (InfoNeed need : selector.allQueries) {
                     StringBuilder br = new StringBuilder();
-                    for (String t : need.distinctSet) {
+                    for (String t : need.getPartialQuery()) {
                         List<String> stems = Analyzers.getAnalyzedTokens(t, analyzer);
                         if (stems.size() == 0) continue;
                         String keyTerm = stems.get(0);

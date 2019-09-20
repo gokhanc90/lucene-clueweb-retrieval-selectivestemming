@@ -188,7 +188,7 @@ public class SelectiveStemmingTool extends CmdLineTool {
 
         System.out.println("========= oracles ==============");
         // if (!collection.equals(GOV2)) fields += ",anchor";
-
+        //systemEvaluator.printOracleMax();
         for (String model : modelIntersection) {
             List<InfoNeed> needs;
             if (residualNeeds) needs=systemEvaluator.residualNeeds(model);

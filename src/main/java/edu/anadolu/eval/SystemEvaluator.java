@@ -14,6 +14,7 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.apache.commons.math3.stat.inference.TTest;
 import org.clueweb09.InfoNeed;
 
 import java.io.DataInputStream;
@@ -234,11 +235,23 @@ public class SystemEvaluator{
             evaluator.printMean(modelIntersection);
         }
     }
-    public void printOracleMax(){
+    public void printOracleMax(List<InfoNeed> needs){
         for(String model:modelIntersection) {
             Solution s = oracleMaxAsSolution(needs, model);
-            System.out.println(s.key + " max:\t" + s.getMean() + "\t" + s.hits0 + "\t" + s.hits1 + "\t" + s.hits2);
+            TTest tTest = new TTest();
+            boolean isSig=false;
+            for (String tag : tags) {
+                double[] scoreArray = tagEvaluatorMap.get(Tag.tag(tag)).scoreArray(model,needs);
+                if (tTest.pairedTTest(scoreArray, s.scores(), 0.05)) isSig=true;
+            }
+
+            if(isSig)   System.out.println(s.key + "* max:\t" + s.getMean() + "\t" + s.hits0 + "\t" + s.hits1 + "\t" + s.hits2);
+            else    System.out.println(s.key + " max:\t" + s.getMean() + "\t" + s.hits0 + "\t" + s.hits1 + "\t" + s.hits2);
         }
+    }
+
+    public void printOracleMax(){
+        printOracleMax(needs);
     }
     public void printRandom(){
         for(String model:modelIntersection) {

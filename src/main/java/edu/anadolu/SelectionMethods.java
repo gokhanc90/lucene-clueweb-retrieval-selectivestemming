@@ -24,7 +24,7 @@ public class SelectionMethods {
 
     public enum SelectionTag {
 
-        MSTTF, MSTDF, LSTDF, LSTTF, TFOrder, DFOrder, KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
+        MSTTF, MSTDF, LSTDF, LSTTF, TFOrder, DFOrder, CTIOrder,KendallTauTFOrder, KendallTauDFOrder,MSTTFBinning,MSTDFBinning,
         TFOrderBinning, DFOrderBinning, DFOrderBinningTie, TTestDF, KendallTauTFOrderBinning, KendallTauDFOrderBinning, CosineSim, ChiSqureDF,
         ChiSqureTF, ChiSqureTFIDF,ChiSqureAggDFTF, ComLOS, ComLOD, ComMajor,Features;
 
@@ -44,6 +44,24 @@ public class SelectionMethods {
         private long DF;
         private int binTF;
         private int binDF;
+        private double cti;
+        private String term;
+
+        public String getTerm() {
+            return term;
+        }
+
+        public void setTerm(String term) {
+            this.term = term;
+        }
+
+        public double getCti() {
+            return cti;
+        }
+
+        public void setCti(double cti) {
+            this.cti = cti;
+        }
 
         public TermTFDF(int indexID) {
             this.indexID = indexID;
@@ -89,12 +107,19 @@ public class SelectionMethods {
 
         @Override
         public String toString() {
-            return  String.valueOf(indexID);
+            return "TermTFDF{" +
+                    "indexID=" + indexID +
+                    ", TF=" + TF +
+                    ", DF=" + DF +
+                    ", binTF=" + binTF +
+                    ", binDF=" + binDF +
+                    ", cti=" + cti +
+                    '}';
         }
     }
 
     public static String getPredictedTag(String selectionTag,Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr){
-        if(tagTermTermStats.get(tagsArr[0]).size() == 1){
+        if(tagTermTermStats.get(tagsArr[0]).size() == 1 && !selectionTag.equals("Features")){
             System.err.print(String.format("%s\t","NotChanged One-Term"));
             return tagsArr[0]; //One-term Stem
         }
@@ -105,6 +130,7 @@ public class SelectionMethods {
             case LSTTF: return LSTTermFreq(tagTermTermStats, tagsArr);
             case TFOrder: return TFOrder(tagTermTermStats, tagsArr);
             case DFOrder: return DFOrder(tagTermTermStats, tagsArr);
+            case CTIOrder: return CTIOrder(tagTermTermStats, tagsArr);
             case KendallTauTFOrder: return KendallTauTFOrder(tagTermTermStats, tagsArr);
             case KendallTauDFOrder: return KendallTauDFOrder(tagTermTermStats, tagsArr);
             case MSTTFBinning: return MSTTFBinning(tagTermTermStats, tagsArr);
@@ -835,6 +861,47 @@ public class SelectionMethods {
 //        }
     }
 
+    private static String CTIOrder(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setCti(tsList.get(i).cti());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setCti(tsList.get(i).cti());
+            listTermTag2.add(termTFDF);
+        }
+
+        listTermTag1.sort((t1, t2) -> Double.compare(t1.getCti(), t2.getCti()));
+        listTermTag2.sort((t1, t2) -> Double.compare(t1.getCti(), t2.getCti()));
+
+        System.err.printf("%s\t",listTermTag1.toString());
+        System.err.printf("%s\t",listTermTag2.toString());
+
+        boolean orderChanged = false;
+        for(int i=0; i<listTermTag1.size(); i++){
+            if(listTermTag1.get(i).getIndexID()!= listTermTag2.get(i).getIndexID()){
+                orderChanged = true;
+                break;
+            }
+        }
+        if(orderChanged){
+            System.err.print(String.format("%s\t","Changed")); //print part1
+            return tagsArr[0]; //NoStem
+        }
+        else{
+            System.err.print(String.format("%s\t","NotChanged")); //print part1
+            return tagsArr[1];
+        }
+    }
+
     private static String DFOrder(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
         ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
         ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
@@ -1135,12 +1202,122 @@ public class SelectionMethods {
      * @return
      */
     private static String Features(Map<String, ArrayList<TermStats>> tagTermTermStats, String[] tagsArr) {
-        String ChiSqureAggDFTF = ChiSqureAggDFTF(tagTermTermStats, tagsArr);
-        String ChiSqureDF = ChiSqureDF(tagTermTermStats, tagsArr);
-        String ChiSqureTF = ChiSqureTF(tagTermTermStats, tagsArr);
+        //String ChiSqureAggDFTF = ChiSqureAggDFTF(tagTermTermStats, tagsArr);
+        //String ChiSqureDF = ChiSqureDF(tagTermTermStats, tagsArr);
+        //String ChiSqureTF = ChiSqureTF(tagTermTermStats, tagsArr);
+
+        ArrayList<TermTFDF> listTermTag1 = new ArrayList<TermTFDF>();
+        ArrayList<TermTFDF> listTermTag2 = new ArrayList<TermTFDF>();
+
+        ArrayList<TermStats> tsList = tagTermTermStats.get(tagsArr[0]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setCti(tsList.get(i).cti());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setTerm(tsList.get(i).term().utf8ToString());
+            listTermTag1.add(termTFDF);
+        }
+
+        tsList = tagTermTermStats.get(tagsArr[1]);
+        for (int i = 0; i < tsList.size(); i++) {
+            TermTFDF termTFDF = new TermTFDF(i);
+            termTFDF.setCti(tsList.get(i).cti());
+            termTFDF.setDF(tsList.get(i).docFreq());
+            termTFDF.setTF(tsList.get(i).totalTermFreq());
+            termTFDF.setTerm(tsList.get(i).term().utf8ToString());
+            listTermTag2.add(termTFDF);
+        }
+
+        double[] idfN = listTermTag1.stream().mapToDouble(t -> Utils.idf(TermTFDF.maxDF, t.DF)).toArray();
+        double[] idfS = listTermTag2.stream().mapToDouble(t -> Utils.idf(TermTFDF.maxDF, t.DF)).toArray();
+
+
+
+        double ictfN=Utils.ictf(listTermTag1.stream().mapToLong(t -> t.TF).toArray(),TermTFDF.maxTF);
+        double ictfS=Utils.ictf(listTermTag2.stream().mapToLong(t -> t.TF).toArray(),TermTFDF.maxTF);
+
+        double[] scqN = listTermTag1.stream().mapToDouble(t -> Utils.scq(TermTFDF.maxDF, t.DF, t.TF)).toArray();
+        double[] scqS = listTermTag2.stream().mapToDouble(t -> Utils.scq(TermTFDF.maxDF, t.DF, t.TF)).toArray();
+
+        double[] ctiN = listTermTag1.stream().mapToDouble(t -> t.cti).toArray();
+        double[] ctiS = listTermTag2.stream().mapToDouble(t -> t.cti).toArray();
+
+
+        //Collections.frequency(terms, term) / terms.size()
+        List<String> l1Terms=listTermTag1.stream().map(t->t.term).collect(Collectors.toList());
+        List<String> l2Terms=listTermTag2.stream().map(t->t.term).collect(Collectors.toList());
+
+        double[] qtfsN = listTermTag1.stream().mapToDouble(t ->(double) Collections.frequency(l1Terms,t.term)/l1Terms.size()).toArray();
+        double[] qtfsS = listTermTag2.stream().mapToDouble(t ->(double) Collections.frequency(l2Terms,t.term)/l2Terms.size()).toArray();
+
+        double[] ctfsN = listTermTag1.stream().mapToDouble(t ->(double) t.TF/TermTFDF.maxTF).toArray();
+        double[] ctfsS = listTermTag2.stream().mapToDouble(t ->(double) t.TF/TermTFDF.maxTF).toArray();
+
+
+        double scsN= Utils.scs(qtfsN,ctfsN);
+        double scsS= Utils.scs(qtfsS,ctfsS);
+
+
+
+//        String MSTTermFreq =MSTTermFreq(tagTermTermStats,tagsArr);
+//        String MSTDocFreq =MSTDocFreq(tagTermTermStats, tagsArr);
+//        String LSTDocFreq =LSTDocFreq(tagTermTermStats, tagsArr);
+//        String LSTTermFreq =LSTTermFreq(tagTermTermStats, tagsArr);
+//        String TFOrder =TFOrder(tagTermTermStats, tagsArr);
+//        String DFOrder =DFOrder(tagTermTermStats, tagsArr);
+//        String CTIOrder =CTIOrder(tagTermTermStats, tagsArr);
+
+
+
         //String ChiSqureTFIDF = ChiSqureTFIDF(tagTermTermStats, tagsArr);
-        //System.err.print(String.format("\t%s\t%s\t%s\t",
-        //        ChiSqureDF,ChiSqureTF,ChiSqureAggDFTF)); //print part1
+        System.err.print(String.format("\t\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t" +
+                        "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t" +
+                        "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t" +
+                        "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\t",
+
+                new Aggregate.Variance().aggregate(idfN),
+                new Aggregate.Variance().aggregate(idfS),
+                new Aggregate.Gamma1().aggregate(idfN),
+                new Aggregate.Gamma1().aggregate(idfS),
+                new Aggregate.Gamma2().aggregate(idfN),
+                new Aggregate.Gamma2().aggregate(idfS),
+                new Aggregate.Maximum().aggregate(idfN),
+                new Aggregate.Maximum().aggregate(idfS),
+                new Aggregate.Minimum().aggregate(idfN),
+                new Aggregate.Minimum().aggregate(idfS),
+                new Aggregate.Average().aggregate(idfN),
+                new Aggregate.Average().aggregate(idfS),
+                new Aggregate.GeometricMean().aggregate(idfN),
+                new Aggregate.GeometricMean().aggregate(idfS),
+                new Aggregate.HarmonicMean().aggregate(idfN),
+                new Aggregate.HarmonicMean().aggregate(idfS),
+
+                new Aggregate.Variance().aggregate(ctiN),
+                new Aggregate.Variance().aggregate(ctiS),
+                new Aggregate.Gamma1().aggregate(ctiN),
+                new Aggregate.Gamma1().aggregate(ctiS),
+                new Aggregate.Gamma2().aggregate(ctiN),
+                new Aggregate.Gamma2().aggregate(ctiS),
+                new Aggregate.Maximum().aggregate(ctiN),
+                new Aggregate.Maximum().aggregate(ctiS),
+                new Aggregate.Minimum().aggregate(ctiN),
+                new Aggregate.Minimum().aggregate(ctiS),
+                new Aggregate.Average().aggregate(ctiN),
+                new Aggregate.Average().aggregate(ctiS),
+                new Aggregate.GeometricMean().aggregate(ctiN),
+                new Aggregate.GeometricMean().aggregate(ctiS),
+                new Aggregate.HarmonicMean().aggregate(ctiN),
+                new Aggregate.HarmonicMean().aggregate(ctiS),
+
+                ictfN/listTermTag1.size(),
+                ictfS/listTermTag1.size(),
+
+                scsN/listTermTag1.size(),
+                scsS/listTermTag1.size()
+
+                )
+        );
         return tagsArr[0];
     }
 /*

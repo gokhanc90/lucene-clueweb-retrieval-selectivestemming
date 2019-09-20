@@ -30,6 +30,10 @@ public class InfoNeed {
 
     public final Set<String> distinctSet;
 
+    public String[] getPartialQuery() {
+        return partialQuery;
+    }
+
     public String query() {
         return query;
     }

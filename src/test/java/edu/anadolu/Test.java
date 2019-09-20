@@ -519,9 +519,10 @@ public class Test {
 
         ChiSquareTest chi = new ChiSquareTest();
         //boolean isSig=chi.chiSquareTest(exp,obs,0.05);
-        double pval=chi.chiSquareDataSetsComparison(obs1,obs2);
+        double pval=chi.chiSquareTestDataSetsComparison(obs1,obs2);
+        double ChiS=chi.chiSquareDataSetsComparison(obs1,obs2);
         boolean isSig=chi.chiSquareTestDataSetsComparison(obs1,obs2,0.05);
-        System.out.println(isSig+" "+pval);
+        System.out.println(isSig+" "+pval+" "+ChiS);
 
     }
 
