@@ -152,6 +152,8 @@ public final class CLI {
 
         tools.add(new BinningHistogramTool());
 
+        tools.add(new CustomSynonymTool());
+
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);
         }

@@ -538,8 +538,8 @@ public class Test {
 
     @org.junit.Test
     public void testAnalyzer() {
-        Analyzer analyzer = Analyzers.analyzer(Tag.KStem);
-        try (TokenStream ts = analyzer.tokenStream("contents", new StringReader("lick"))) {
+        Analyzer analyzer = Analyzers.analyzer(Tag.SynonymSnowballEng,Paths.get("D:\\TFD_HOME\\MQ09"));
+        try (TokenStream ts = analyzer.tokenStream("contents", new StringReader("wedding budget calculator"))) {
 
             final CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
             ts.reset(); // Resets this stream to the beginning. (Required)
@@ -601,11 +601,12 @@ public class Test {
     public void CLITest() throws Exception {
      //   String[] args ={"TFDistribution","-collection","MC","-task","term"};
       //  String[] args = {"SelectiveStemming", "-collection", "MC", "-tags", "NoStemTurkish_Zemberek", "-metric","NDCG20", "-spam", "0", "-selection", "MSTDF", "-binDF","10"};
-        String[] args ={"Stats","-collection","MQ07","-task","queryLength"};
+        //String[] args ={"Stats","-collection","MQ07","-task","queryLength"};
       //  String[] args ={"AdHocExp","-collection","MQ09", "-tag","SnowballEng","-task","resultSet", "-models", "BM25k1.3b0.5_PL2c4.0_LGDc2.0_DirichletLMc500.0_DPH_DFIC_DFRee_DLH13"};
      //  String[] args ={"SystemEvaluator","-collection","MC","-metric","NDCG20","-tags","NoStemTurkish_Zemberek_SnowballTr_F5Stem"};
 //        String[] args ={"Indexer","-collection","MC","-tag","Zemberek"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
+        String[] args ={"CustomSynonym","-collection","MQ09","-task","search","-tag","SynonymSnowballEng"};
 
         CLI.main(args);
     }

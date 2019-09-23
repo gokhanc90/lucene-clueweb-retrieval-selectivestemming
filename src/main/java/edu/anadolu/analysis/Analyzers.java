@@ -9,11 +9,15 @@ import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.miscellaneous.TruncateTokenFilterFactory;
 import org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory;
 import org.apache.lucene.analysis.standard.UAX29URLEmailTokenizer;
+import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
+import org.apache.lucene.analysis.synonym.SynonymGraphFilterFactory;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tr.Zemberek3StemFilterFactory;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +84,31 @@ public class Analyzers {
             return anlyzr(tag);
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
+        }
+    }
+
+    public static Analyzer analyzer(Tag tag, Path synonymPath) {
+        try {
+            return anlyzr(tag,synonymPath);
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    private static Analyzer anlyzr(Tag tag,Path synonymPath) throws IOException {
+
+        switch (tag) {
+
+
+            case SynonymSnowballEng:
+                return CustomAnalyzer.builder(synonymPath)
+                        .withTokenizer("standard")
+                        .addTokenFilter("lowercase")
+                        .addTokenFilter(SynonymGraphFilterFactory.class,"format","solr","expand","true","synonyms",tag.toString()+".txt")
+                        .build();
+            default:
+                throw new AssertionError(Analyzers.class);
+
         }
     }
 
