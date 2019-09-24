@@ -113,7 +113,7 @@ public class Searcher implements Closeable {
         this.indexTag = indexPath.getFileName().toString();
         this.analyzerTag = analyzerTag;
 
-        this.reader = null;//DirectoryReader.open(FSDirectory.open(indexPath));
+        this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
         this.synonymPath=synonymPath;
         this.dataSet = dataSet;
         this.numHits = numHits;

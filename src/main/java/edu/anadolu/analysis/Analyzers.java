@@ -97,19 +97,11 @@ public class Analyzers {
 
     private static Analyzer anlyzr(Tag tag,Path synonymPath) throws IOException {
 
-        switch (tag) {
-
-
-            case SynonymSnowballEng:
-                return CustomAnalyzer.builder(synonymPath)
-                        .withTokenizer("standard")
-                        .addTokenFilter("lowercase")
-                        .addTokenFilter(SynonymGraphFilterFactory.class,"format","solr","expand","true","synonyms",tag.toString()+".txt")
-                        .build();
-            default:
-                throw new AssertionError(Analyzers.class);
-
-        }
+        return CustomAnalyzer.builder(synonymPath)
+                .withTokenizer("standard")
+                .addTokenFilter("lowercase")
+                .addTokenFilter(SynonymGraphFilterFactory.class, "format", "solr", "expand", "true", "synonyms", tag.toString() + ".txt")
+                .build();
     }
 
     private static Analyzer anlyzr(Tag tag) throws IOException {
