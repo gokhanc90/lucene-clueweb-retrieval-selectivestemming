@@ -54,7 +54,7 @@ public class Analyzers {
     public static String getAnalyzedToken(String text, Analyzer analyzer) {
         final List<String> list = getAnalyzedTokens(text, analyzer);
         if (list.size() != 1)
-            throw new RuntimeException("Text : " + text + " contains more than one tokens : " + list.toString());
+            System.err.println("Text : " + text + " contains more than one tokens : " + list.toString());
         return list.get(0);
     }
 

@@ -22,4 +22,7 @@ public class IDF extends Base {
     public double value(String word) throws IOException {
         return Math.log((double) docCount / df(field, word));
     }
+    public long df(String word) throws IOException {
+        return df(field,word);
+    }
 }

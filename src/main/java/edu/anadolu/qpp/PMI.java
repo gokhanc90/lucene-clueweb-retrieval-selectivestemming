@@ -41,7 +41,7 @@ public class PMI extends Base {
         int temp = t1ANDt2(term1, term2);
         int actual = searcher.count(queryParser.parse(term1 + " " + term2)) + 1;
 
-        if (temp != actual) throw new RuntimeException("previous implementation returns different result from new one");
+        if (temp != actual) System.err.println("previous implementation returns different result from new one "+term1+" "+term2+" "+temp+" "+actual);
 
         return actual;
     }

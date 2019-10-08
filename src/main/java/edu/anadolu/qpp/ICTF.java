@@ -20,4 +20,7 @@ public class ICTF extends Base {
     public double value(String word) throws IOException {
         return Math.log(sumTotalTermFreq / ctf(field, word));
     }
+    public long TF(String word) throws IOException {
+        return ctf(field,word);
+    }
 }

@@ -34,7 +34,7 @@ public abstract class Base implements Predictor, Closeable {
     protected final DirectoryReader reader;
 
     protected final Path indexPath;
-    protected final Analyzer analyzer;
+    protected Analyzer analyzer;
 
     public Base(Path indexPath, String field) throws IOException {
 
@@ -57,6 +57,10 @@ public abstract class Base implements Predictor, Closeable {
 
         System.out.println("docCount:" + docCount + " numDocs:" + reader.numDocs() + " sumTotalTermFreq:" + sumTotalTermFreq);
 
+    }
+
+    public void setAnalyzer(Analyzer a){
+        this.analyzer=a;
     }
 
     @Override
