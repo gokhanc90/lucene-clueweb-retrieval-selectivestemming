@@ -9,6 +9,7 @@ import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
 import edu.anadolu.knn.Measure;
 import edu.anadolu.qpp.*;
+import edu.anadolu.stats.DocLengthStats;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.lucene.analysis.Analyzer;
@@ -109,7 +110,7 @@ public final class FeatureTool extends CmdLineTool {
         // Print header
 
             System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tVarIDF\tMeanCTI\tVarCTI\tMeanSkew\tVarSkew\tMeanKurt\tVarKurt\tMeanSCQ\tVarSCQ\tMeanCommonality\tVarCommonality\tSCCS\tMeanSCCQ\tVarSCCQ");
-            System.err.println("QueryID\t"+"word\t"+"ictfs"+"\t"+"idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t"+"DF\t"+"TF\t");
+            System.err.println("QueryID\t"+"word\t"+"ictfs"+"\t"+"idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t"+"DF\t"+"TF\t"+"sccq\t"+"DocLenAcc\t");
 
         for (InfoNeed need : querySelector.allQueries) {
 
@@ -132,6 +133,7 @@ public final class FeatureTool extends CmdLineTool {
             double[] sccqs = new double[analyzedTokens.size()];
             double[] TFs = new double[analyzedTokens.size()];
             double[] DFs = new double[analyzedTokens.size()];
+            long[] DocLenAccs = new long[analyzedTokens.size()];
 
             for (int c = 0; c < analyzedTokens.size(); c++) {
                 String word = analyzedTokens.get(c);
@@ -140,6 +142,7 @@ public final class FeatureTool extends CmdLineTool {
 
                 idfs[c] = idf.value(word);
                 DFs[c] = com.df(word);
+                DocLenAccs[c] = com.getdocLenAcc(); //I should be called after com.df()
                 ictfs[c] = ictf.value(word);
                 TFs[c] = com.TF(word);
                 ctis[c] = cti.value(word);
@@ -151,7 +154,7 @@ public final class FeatureTool extends CmdLineTool {
 
                 if (task.equals("term")){
                     System.err.println(need.id() + "\t"+ word +"\t"+ ictfs[c] + "\t" + idfs[c] + "\t" + ctis[c] + "\t" + skew[c] + "\t" + kurt[c] + "\t" + scqs[c] + "\t" + commonalities[c] + "\t"
-                            + DFs[c] + "\t"+ TFs[c] + "\t");
+                            + DFs[c] + "\t"+ TFs[c] + "\t"+ sccqs[c]+"\t"+DocLenAccs[c]+"\t");
                     }
             }
             System.out.print("qid:" + need.id() + "\t" + need.wordCount() + "\t" + idf.aggregated(need, new Aggregate.Gamma1()) + "\t" + scope.value(need) + "\t");

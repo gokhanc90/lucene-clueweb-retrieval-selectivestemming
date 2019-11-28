@@ -10,10 +10,12 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.queryparser.xml.builders.BooleanQueryBuilder;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.ModelBase;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.QueryBuilder;
 import org.clueweb09.InfoNeed;
 import org.clueweb09.tracks.Track;
 
@@ -28,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static edu.anadolu.Indexer.FIELD_CONTENTS;
 import static edu.anadolu.Indexer.FIELD_ID;
@@ -205,8 +208,20 @@ public class Searcher implements Closeable {
             String queryString = need.query();
             Query query = queryParser.parse(queryString);
 
+            Map<Integer, List<String>> syn = Analyzers.getAnalyzedTokensWithSynonym(queryString, Analyzers.analyzer(analyzerTag,synonymPath));
+            List<String> orj = Analyzers.getAnalyzedTokens(queryString, Analyzers.analyzer(Tag.NoStem));
+            Map<Integer, List<Term>> ts = syn.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue().stream().map(t->new Term(field,t)).collect(Collectors.toList())));
 
-            ScoreDoc[] hits = searcher.search(query, numHits).scoreDocs;
+
+            BooleanQuery.Builder builder = new BooleanQuery.Builder();
+            int j=0;
+            for(Map.Entry<Integer,List<Term>> e:ts.entrySet()){
+                BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(new Term(field,orj.get(j++)),e.getValue().toArray(new Term[0])), BooleanClause.Occur.SHOULD);
+                builder.add(bc);
+            }
+            Query q = builder.build();
+
+            ScoreDoc[] hits = searcher.search(q, numHits).scoreDocs;
 
             /**
              * If you are returning zero documents for a query, instead return the single document

@@ -12,16 +12,18 @@ import org.apache.lucene.analysis.standard.UAX29URLEmailTokenizer;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilterFactory;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.analysis.tr.Zemberek3StemFilterFactory;
+import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static edu.anadolu.analysis.Tag.KStem;
 
@@ -71,6 +73,35 @@ public class Analyzers {
             while (ts.incrementToken())
                 list.add(termAtt.toString());
 
+            ts.end();   // Perform end-of-stream operations, e.g. set the final offset.
+        } catch (IOException ioe) {
+            throw new RuntimeException("happened during string analysis", ioe);
+        }
+        return list;
+    }
+
+    public static Map<Integer,List<String>> getAnalyzedTokensWithSynonym(String text, Analyzer analyzer) {
+
+        final Map<Integer,List<String>> list = new HashMap<>();
+        try (TokenStream ts = analyzer.tokenStream(FIELD, new StringReader(text))) {
+
+            final CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+            final OffsetAttribute offsetAttribute = ts.addAttribute(OffsetAttribute.class);
+
+            ts.reset(); // Resets this stream to the beginning. (Required)
+            while (ts.incrementToken()) {
+                int startOffset = offsetAttribute.startOffset();
+                if(list.containsKey(startOffset)){
+                    List<String> l = list.get(startOffset);
+                    l.add(termAtt.toString());
+                    list.put(startOffset,l);
+                }
+                else{
+                    ArrayList<String> l = new ArrayList<>();
+                    l.add(termAtt.toString());
+                    list.put(startOffset, l);
+                }
+            }
             ts.end();   // Perform end-of-stream operations, e.g. set the final offset.
         } catch (IOException ioe) {
             throw new RuntimeException("happened during string analysis", ioe);

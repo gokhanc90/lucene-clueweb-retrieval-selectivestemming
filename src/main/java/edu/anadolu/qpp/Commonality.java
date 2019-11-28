@@ -2,9 +2,7 @@ package edu.anadolu.qpp;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.index.MultiFields;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
+import org.apache.lucene.index.*;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -16,10 +14,15 @@ import java.util.Set;
 import static edu.anadolu.analysis.Analyzers.getAnalyzedTokens;
 
 public class Commonality extends Base {
-
+    private long docLenAcc;
     public Commonality(Path indexPath) throws IOException {
         super(indexPath, "contents");
     }
+
+    public long getdocLenAcc() {
+        return docLenAcc;
+    }
+
 
     @Override
     public double value(String word) throws IOException {
@@ -45,6 +48,7 @@ public class Commonality extends Base {
     }
 
     public long df(String word) throws IOException {
+        docLenAcc=0;
         List<String> confs = getAnalyzedTokens(word, analyzer);
 
         Set<Integer> df = new HashSet<>();
@@ -58,6 +62,20 @@ public class Commonality extends Base {
             while (postingsEnum.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
                 df.add(postingsEnum.docID());
             }
+        }
+
+        //doclen is set
+        for (Integer docID : df) {
+            long doclen;
+            NumericDocValues norms = MultiDocValues.getNormValues(reader, field);
+
+            if (norms.advanceExact(docID)) {
+                doclen = norms.longValue();
+            } else {
+                doclen = 0;
+            }
+
+            docLenAcc += doclen;
         }
         return df.size();
     }

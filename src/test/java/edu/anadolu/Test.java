@@ -15,6 +15,8 @@ import edu.anadolu.eval.Evaluator;
 import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.freq.FreqBinning;
 import edu.anadolu.knn.Measure;
+import edu.anadolu.qpp.CTI;
+import edu.anadolu.qpp.Commonality;
 import edu.anadolu.similarities.DPH;
 import edu.anadolu.stats.TermStats;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
@@ -537,7 +539,26 @@ public class Test {
     }
 
     @org.junit.Test
-    public void testAnalyzer() {
+    public void testCTISynonym() throws IOException {
+        Analyzer analyzer = Analyzers.analyzer(Tag.SynonymSnowballEng,Paths.get("D:\\TFD_HOME\\MQ09"));
+        Commonality commonality = new Commonality(Paths.get("D:\\TFD_HOME\\CW09B\\indexes\\NoStem"));
+        commonality.setAnalyzer(analyzer);
+        //System.out.println(commonality.ctiSynonym("obama"));
+
+        CTI cti = new CTI(Paths.get("D:\\TFD_HOME\\CW09B\\indexes\\SnowballEng"));
+        System.out.println(cti.value("familiy"));
+    }
+
+    @org.junit.Test
+    public void testCommonality() throws IOException {
+        Analyzer analyzer = Analyzers.analyzer(Tag.SynonymSnowballEng,Paths.get("D:\\TFD_HOME\\MQ09"));
+        Commonality commonality = new Commonality(Paths.get("D:\\TFD_HOME\\CW09B\\indexes\\NoStem"));
+        commonality.setAnalyzer(analyzer);
+        System.out.println(commonality.value("cloxed"));
+    }
+
+    @org.junit.Test
+    public void testAnalyzer() throws IOException {
         Analyzer analyzer = Analyzers.analyzer(Tag.SynonymSnowballEng,Paths.get("D:\\TFD_HOME\\MQ09"));
         try (TokenStream ts = analyzer.tokenStream("contents", new StringReader("wedding budget calculator"))) {
 
@@ -606,8 +627,10 @@ public class Test {
      //  String[] args ={"SystemEvaluator","-collection","MC","-metric","NDCG20","-tags","NoStemTurkish_Zemberek_SnowballTr_F5Stem"};
 //        String[] args ={"Indexer","-collection","MC","-tag","Zemberek"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
-        String[] args ={"CustomSynonym","-collection","MQ09","-task","search","-tag","SynonymKStem"};
+        String[] args ={"CustomSynonym","-collection","MQ09","-task","search","-tag","SynonymSnowballEng"};
         //String[] args ={"Custom","-collection","MQ09","-task","search","-tag","SnowballEng"};
+  //      String[] args ={"Feature","-collection","MQ09","-tag","SynonymKStem"};
+        //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};
 
         CLI.main(args);
     }
