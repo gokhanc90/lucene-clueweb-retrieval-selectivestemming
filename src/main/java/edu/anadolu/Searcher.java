@@ -216,7 +216,12 @@ public class Searcher implements Closeable {
             BooleanQuery.Builder builder = new BooleanQuery.Builder();
             int j=0;
             for(Map.Entry<Integer,List<Term>> e:ts.entrySet()){
-                BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(new Term(field,orj.get(j++)),e.getValue().toArray(new Term[0])), BooleanClause.Occur.SHOULD);
+                String orjinalTerm = orj.remove(j);
+                Term[] otherOrj = orj.stream().map(o->new Term(field,o)).collect(Collectors.toList()).toArray(new Term[0]);
+                Term[] variants = e.getValue().toArray(new Term[0]);
+                BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(dataSet,otherOrj,Tag.NoStem,new Term(field,orjinalTerm),variants), BooleanClause.Occur.SHOULD);
+                orj.add(j,orjinalTerm);
+                j++;
                 builder.add(bc);
             }
             Query q = builder.build();
