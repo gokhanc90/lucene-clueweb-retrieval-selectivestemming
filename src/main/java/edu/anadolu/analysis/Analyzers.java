@@ -5,6 +5,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.en.EnglishMinimalStemFilterFactory;
+import org.apache.lucene.analysis.hps.HPSFilterFactory;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.miscellaneous.TruncateTokenFilterFactory;
 import org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory;
@@ -266,6 +267,15 @@ public class Analyzers {
                         .withTokenizer("standard")
                         .addTokenFilter("lowercase")
                         .addTokenFilter(SnowballPorterFilterFactory.class, "language", "English")
+                        .build();
+            /**
+            * Brychcín, T., & Konopík, M. (2015). HPS: High precision stemmer. Information Processing & Management, 51(1), 68-91.
+            * */
+            case HPS:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("lowercase")
+                        .addTokenFilter(HPSFilterFactory.class, "language", "en")
                         .build();
             /**
              * "S-Stemmer" from How Effective Is Suffixing? Donna Harman.

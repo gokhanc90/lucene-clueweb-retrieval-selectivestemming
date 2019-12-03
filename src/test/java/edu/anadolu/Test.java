@@ -37,6 +37,8 @@ import org.clueweb09.ClueWeb12WarcRecord;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.paukov.combinatorics3.Generator;
+import ws.StemmerBuilder;
+import ws.stemmer.Stemmer;
 
 import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
@@ -633,6 +635,16 @@ public class Test {
         //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};
 
         CLI.main(args);
+    }
+
+    @org.junit.Test
+    public void testHPS() throws Exception {
+        String path = getClass().getClassLoader().getResource("HPS_en.bin").getPath();
+        Stemmer stemmer = StemmerBuilder.loadStemmer(path, 3);
+        System.out.println(stemmer.getClass("written"));
+
+        Analyzer a = Analyzers.analyzer(Tag.HPS);
+        System.out.println(Analyzers.getAnalyzedTokens("written readings",a));
     }
 
     @org.junit.Test
