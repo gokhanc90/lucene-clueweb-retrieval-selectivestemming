@@ -86,7 +86,9 @@ public class Searcher implements Closeable {
     protected final DataSet dataSet;
     final int numHits;
 
-    final Tag analyzerTag;
+    Tag analyzerTag;
+    Tag runningTag;
+    String weightedFunc;
 
     public Searcher(Path indexPath, DataSet dataSet, int numHits) throws IOException {
 
@@ -96,6 +98,7 @@ public class Searcher implements Closeable {
 
         this.indexTag = indexPath.getFileName().toString();
         this.analyzerTag = Tag.tag(indexTag);
+        this.runningTag=analyzerTag;
 
         this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
 
@@ -114,7 +117,10 @@ public class Searcher implements Closeable {
         }
 
         this.indexTag = indexPath.getFileName().toString();
-        this.analyzerTag = analyzerTag;
+        this.runningTag=analyzerTag;
+        if(analyzerTag.toString().contains("SynonymSnowballEng")) this.analyzerTag=Tag.SynonymSnowballEng;
+        if(analyzerTag.toString().contains("SynonymKStem")) this.analyzerTag=Tag.SynonymKStem;
+        if(analyzerTag.toString().contains("QBS")) this.weightedFunc="QBS";
 
         this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
         this.synonymPath=synonymPath;
@@ -154,7 +160,7 @@ public class Searcher implements Closeable {
 
         for (final Track track : dataSet.tracks()) {
 
-            final Path path = Paths.get(dataSet.collectionPath().toString(), runsPath, analyzerTag.toString(), track.toString());
+            final Path path = Paths.get(dataSet.collectionPath().toString(), runsPath, runningTag.toString(), track.toString());
             createDirectories(path);
 
             for (String field : fields)
@@ -194,7 +200,7 @@ public class Searcher implements Closeable {
         IndexSearcher searcher = new IndexSearcher(reader);
         searcher.setSimilarity(similarity);
 
-        final String runTag = toString(similarity, operator, field, 0,analyzerTag);
+        final String runTag = toString(similarity, operator, field, 0,runningTag);
 
         PrintWriter out = new PrintWriter(Files.newBufferedWriter(path.resolve(runTag + ".txt"), StandardCharsets.US_ASCII));
 
@@ -202,31 +208,41 @@ public class Searcher implements Closeable {
         QueryParser queryParser = new QueryParser(field, Analyzers.analyzer(analyzerTag,synonymPath));
         queryParser.setDefaultOperator(operator);
 
+        SynonymWeightFunctions func=null;
+        if("QBS".equals(weightedFunc)) func=new SynonymWeightFunctions(dataSet,Tag.NoStem);
 
         for (InfoNeed need : track.getTopics()) {
 
             String queryString = need.query();
-            Query query = queryParser.parse(queryString);
+            Query query;
+            if("QBS".equals(weightedFunc)) {
 
-            Map<Integer, List<String>> syn = Analyzers.getAnalyzedTokensWithSynonym(queryString, Analyzers.analyzer(analyzerTag,synonymPath));
-            List<String> orj = Analyzers.getAnalyzedTokens(queryString, Analyzers.analyzer(Tag.NoStem));
-            Map<Integer, List<Term>> ts = syn.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue().stream().map(t->new Term(field,t)).collect(Collectors.toList())));
+                Map<Integer, List<String>> syn = Analyzers.getAnalyzedTokensWithSynonym(queryString, Analyzers.analyzer(analyzerTag, synonymPath));
+                List<String> orj = Analyzers.getAnalyzedTokens(queryString, Analyzers.analyzer(Tag.NoStem));
+                Map<Integer, List<Term>> ts = new LinkedHashMap<>();
+                for (Map.Entry<Integer, List<String>> e : syn.entrySet()) {
+                    ts.put(e.getKey(), e.getValue().stream().map(t -> new Term(field, t)).collect(Collectors.toList()));
+                }
+                //Map<Integer, List<Term>> ts = syn.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue().stream().map(t->new Term(field,t)).collect(Collectors.toList())));
 
 
-            BooleanQuery.Builder builder = new BooleanQuery.Builder();
-            int j=0;
-            for(Map.Entry<Integer,List<Term>> e:ts.entrySet()){
-                String orjinalTerm = orj.remove(j);
-                Term[] otherOrj = orj.stream().map(o->new Term(field,o)).collect(Collectors.toList()).toArray(new Term[0]);
-                Term[] variants = e.getValue().toArray(new Term[0]);
-                BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(dataSet,otherOrj,Tag.NoStem,new Term(field,orjinalTerm),variants), BooleanClause.Occur.SHOULD);
-                orj.add(j,orjinalTerm);
-                j++;
-                builder.add(bc);
+                BooleanQuery.Builder builder = new BooleanQuery.Builder();
+                int j = 0;
+                for (Map.Entry<Integer, List<Term>> e : ts.entrySet()) {
+                    String orjinalTerm = orj.remove(j);
+                    Term[] otherOrj = orj.stream().map(o -> new Term(field, o)).collect(Collectors.toList()).toArray(new Term[0]);
+                    Term[] variants = e.getValue().toArray(new Term[0]);
+                    BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(func,dataSet, otherOrj, Tag.NoStem, new Term(field, orjinalTerm), variants), BooleanClause.Occur.SHOULD);
+                    orj.add(j, orjinalTerm);
+                    j++;
+                    builder.add(bc);
+                }
+                query = builder.build();
+
+            }else {
+                query = queryParser.parse(queryString);
             }
-            Query q = builder.build();
-
-            ScoreDoc[] hits = searcher.search(q, numHits).scoreDocs;
+            ScoreDoc[] hits = searcher.search(query, numHits).scoreDocs;
 
             /**
              * If you are returning zero documents for a query, instead return the single document
@@ -274,6 +290,10 @@ public class Searcher implements Closeable {
         }
 
         out.close();
+        if("QBS".equals(weightedFunc)) {
+            func.pmi.close();
+            func.idf.close();
+        }
     }
 
     public void search(Track track, Similarity similarity, QueryParser.Operator operator, String field, Path path) throws IOException, ParseException {

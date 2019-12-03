@@ -627,7 +627,7 @@ public class Test {
      //  String[] args ={"SystemEvaluator","-collection","MC","-metric","NDCG20","-tags","NoStemTurkish_Zemberek_SnowballTr_F5Stem"};
 //        String[] args ={"Indexer","-collection","MC","-tag","Zemberek"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
-        String[] args ={"CustomSynonym","-collection","MQ09","-task","search","-tag","SynonymSnowballEng"};
+        String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymSnowballEng"};
         //String[] args ={"Custom","-collection","MQ09","-task","search","-tag","SnowballEng"};
   //      String[] args ={"Feature","-collection","MQ09","-tag","SynonymKStem"};
         //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};

@@ -82,7 +82,7 @@ public class Analyzers {
 
     public static Map<Integer,List<String>> getAnalyzedTokensWithSynonym(String text, Analyzer analyzer) {
 
-        final Map<Integer,List<String>> list = new HashMap<>();
+        final Map<Integer,List<String>> list = new LinkedHashMap<>();
         try (TokenStream ts = analyzer.tokenStream(FIELD, new StringReader(text))) {
 
             final CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);

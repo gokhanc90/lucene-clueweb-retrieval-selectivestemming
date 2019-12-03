@@ -13,8 +13,8 @@ public class SynonymWeightFunctions {
     public  DataSet dataset;
     public  Tag tag;
 
-    private PMI pmi;
-    private IDF idf;
+    public PMI pmi;
+    public IDF idf;
 
     public SynonymWeightFunctions(DataSet dataset, Tag tag) {
         this.dataset = dataset;

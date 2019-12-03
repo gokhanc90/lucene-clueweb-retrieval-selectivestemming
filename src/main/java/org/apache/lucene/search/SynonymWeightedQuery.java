@@ -44,20 +44,18 @@ public final class SynonymWeightedQuery extends Query {
     private final Term[] terms;
     private final Term orginal;
     private final Term[] otherOrj;
-    private final Tag tag;
-    private final DataSet dataSet;
+    private SynonymWeightFunctions functions;
 
     /**
      * Creates a new SynonymQuery, matching any of the supplied terms.
      * <p>
      * The terms must all have the same field.
      */
-    public SynonymWeightedQuery(DataSet dataset, Term[] otherOrj, Tag tag, Term original, Term... terms) {
+    public SynonymWeightedQuery(SynonymWeightFunctions functions,DataSet dataset, Term[] otherOrj, Tag tag, Term original, Term... terms) {
         this.terms = Objects.requireNonNull(terms).clone();
         this.orginal = original;
         this.otherOrj=otherOrj;
-        this.tag = tag;
-        this.dataSet = dataset;
+        this.functions=functions;
         // check that all terms are the same field
         String field = null;
         for (Term term : terms) {
@@ -145,7 +143,7 @@ public final class SynonymWeightedQuery extends Query {
             long totalTermFreq = 0;
             termContexts = new TermContext[terms.length];
             factors = new double[terms.length];
-            SynonymWeightFunctions functions = new SynonymWeightFunctions(dataSet,tag);
+
             for (int i = 0; i < termContexts.length; i++) {
                 factors[i]=functions.QBSART(orginal,terms[i],otherOrj);
                 termContexts[i] = build(searcher.getTopReaderContext(), terms[i],factors[i]);//PMI
@@ -251,7 +249,7 @@ public final class SynonymWeightedQuery extends Query {
                         final TermState termState = termsEnum.termState();
                         //if (DEBUG) System.out.println("    found");
                         long TF = termsEnum.totalTermFreq();
-                        long newTF = (long) (TFWeight*TF); //lower nedeed
+                        long newTF = Math.round (TFWeight*TF);
                         if(newTF<=termsEnum.docFreq()) newTF=termsEnum.docFreq()+1;
                         perReaderTermState.register(termState, ctx.ord, termsEnum.docFreq(), newTF);
                     }
@@ -272,7 +270,9 @@ public final class SynonymWeightedQuery extends Query {
 
         @Override
         protected float score(DisiWrapper topList) throws IOException {
-            return similarity.score(topList.doc, tf(topList));
+            float freq =  tf(topList);
+            if(freq == 0) return 0;
+            return similarity.score(topList.doc, freq);
         }
 
         /** combines TF of all subs. */
@@ -280,7 +280,7 @@ public final class SynonymWeightedQuery extends Query {
             int tf = 0;
             for (DisiWrapper w = topList; w != null; w = w.next) {
                 TermScorerWrapper scorerWrapper = (TermScorerWrapper)w.scorer;
-                tf += scorerWrapper.getScorer().freq()*scorerWrapper.getFactor(); //lower needed
+                tf += Math.round(scorerWrapper.getScorer().freq()*scorerWrapper.getFactor());
             }
             return tf;
         }
