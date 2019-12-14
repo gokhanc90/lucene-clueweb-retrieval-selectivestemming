@@ -7,6 +7,10 @@ import org.apache.lucene.analysis.util.TokenFilterFactory;
 import ws.stemmer.Stemmer;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 
 public class HPSFilterFactory extends TokenFilterFactory implements ResourceLoaderAware {
@@ -34,6 +38,10 @@ public class HPSFilterFactory extends TokenFilterFactory implements ResourceLoad
 
     @Override
     public void inform(ResourceLoader loader) throws IOException {
-        model=loader.getClass().getClassLoader().getResource("HPS_"+language+".bin").getPath();
+
+        Path path = Paths.get("HPS_"+language+".bin");
+        if(Files.exists(path)) model=path.toString();
+        else model = HPSFilterFactory.class.getClassLoader().getResource("HPS_"+language+".bin").getPath();
+        System.out.println(model);
     }
 }

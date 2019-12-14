@@ -24,6 +24,7 @@ public final class HPSFilter extends TokenFilter {
     public HPSFilter(TokenStream input, String model) {
         super(input);
         try {
+            System.out.println(model);
             stemmer=StemmerBuilder.loadStemmer(model,3);
         } catch (IOException | ClassNotFoundException e) {
             throw new RuntimeException("Error instantiating stemmer", e);

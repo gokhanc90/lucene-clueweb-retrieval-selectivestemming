@@ -111,6 +111,7 @@ public class Searcher implements Closeable {
     }
 
     public Searcher(Path indexPath, DataSet dataSet,Tag analyzerTag, Path synonymPath,int numHits) throws IOException {
+        BooleanQuery.setMaxClauseCount(Integer.MAX_VALUE);
 
         if (!Files.exists(indexPath) || !Files.isDirectory(indexPath) || !Files.isReadable(indexPath)) {
             throw new IllegalArgumentException(indexPath + " does not exist or is not a directory.");
@@ -120,6 +121,7 @@ public class Searcher implements Closeable {
         this.runningTag=analyzerTag;
         if(analyzerTag.toString().contains("SynonymSnowballEng")) this.analyzerTag=Tag.SynonymSnowballEng;
         if(analyzerTag.toString().contains("SynonymKStem")) this.analyzerTag=Tag.SynonymKStem;
+        if(analyzerTag.toString().contains("SynonymHPS")) this.analyzerTag=Tag.SynonymHPS;
         if(analyzerTag.toString().contains("QBS")) this.weightedFunc="QBS";
 
         this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
