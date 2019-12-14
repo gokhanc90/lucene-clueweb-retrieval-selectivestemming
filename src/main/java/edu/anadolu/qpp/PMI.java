@@ -78,6 +78,10 @@ public class PMI extends Base {
         return (-1/(log2((double) term1ANDterm2(m1, m2)/(double)(docCount + 1))))*log2((docCount + 1) * (double) term1ANDterm2(m1, m2) / (double) (analyzedDF(field, m1) * analyzedDF(field, m2)));
     }
 
+    public double coOccurrenceGupta19(String m1, String m2) throws IOException, ParseException {
+        return  ((double) (term1ANDterm2(m1, m2)*2)) / ((double) (analyzedDF(field, m1) + analyzedDF(field, m2)));
+    }
+
 
     public double value(InfoNeed need) throws IOException, ParseException {
 

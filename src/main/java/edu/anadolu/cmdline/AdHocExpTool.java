@@ -247,6 +247,67 @@ public class AdHocExpTool extends CmdLineTool {
             return;
         }
 
+        if ("commonalityFast".equals(task)) {
+            Analyzer analyzer = Analyzers.analyzer(Tag.tag(tag));
+            Map<String,Set<String>> stemVariants = new LinkedHashMap<>();
+            QuerySelector selector = new QuerySelector(dataset, Tag.NoStem.toString());
+
+            System.out.println("Query and term commonality");
+            for (InfoNeed need : selector.allQueries) {
+                for (String t : Analyzers.getAnalyzedTokens(need.query(),Analyzers.analyzer(Tag.NoStem))) {
+                        List<String> stems = Analyzers.getAnalyzedTokens(t, analyzer);
+                        if (stems.size() == 0) continue;
+                        String stem = stems.get(0);
+
+                        if (stemVariants.containsKey(stem)) {
+                            Set<String> variants = stemVariants.get(stem);
+                            variants.add(t);
+                            stemVariants.put(stem, variants);
+                        } else {
+                            Set<String> variants = new TreeSet<>();
+                            variants.add(t);
+                            stemVariants.put(stem, variants);
+                        }
+
+
+                }
+            }
+
+            //All queries are added, now iterate collection
+            for (final Path indexPath : discoverIndexes(dataset)) {
+                String tagC = indexPath.getFileName().toString();
+                if (tagC.equals(Tag.NoStem.toString())) {
+                    IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPath));
+                    LuceneDictionary ld = new LuceneDictionary(reader, "contents");
+                    BytesRefIterator it = ld.getEntryIterator();
+                    BytesRef spare;
+
+                    while ((spare = it.next()) != null) {
+                        List<String> stems = Analyzers.getAnalyzedTokens(spare.utf8ToString(), analyzer);
+                        if (stems.size() == 0) continue;
+                        String stem = stems.get(0);
+
+                        if (stemVariants.containsKey(stem)) {
+                            Set<String> variants = stemVariants.get(stem);
+                            variants.add(spare.utf8ToString());
+                            stemVariants.put(stem, variants);
+                        }
+                    }
+                }
+            }
+
+            for(Map.Entry<String,Set<String>> e :stemVariants.entrySet()){
+                if(e.getValue().size()==1) continue;
+                StringBuilder br = new StringBuilder();
+                String variantsPretty = e.getValue().stream().collect(Collectors.joining(",", "", ""));
+                br.append(variantsPretty);
+                System.out.println(br.toString());
+            }
+
+
+
+        }
+
         if ("commonality".equals(task)) {
             IgniteCache<String, LinkedList<String>> stemVariants=null;
             try {

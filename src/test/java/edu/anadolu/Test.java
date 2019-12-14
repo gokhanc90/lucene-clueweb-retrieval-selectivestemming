@@ -625,11 +625,13 @@ public class Test {
      //   String[] args ={"TFDistribution","-collection","MC","-task","term"};
       //  String[] args = {"SelectiveStemming", "-collection", "MC", "-tags", "NoStemTurkish_Zemberek", "-metric","NDCG20", "-spam", "0", "-selection", "MSTDF", "-binDF","10"};
         //String[] args ={"Stats","-collection","MQ07","-task","queryLength"};
-      //  String[] args ={"AdHocExp","-collection","MQ09", "-tag","SnowballEng","-task","resultSet", "-models", "BM25k1.3b0.5_PL2c4.0_LGDc2.0_DirichletLMc500.0_DPH_DFIC_DFRee_DLH13"};
+        //String[] args ={"AdHocExp","-collection","MQ09", "-tag","SnowballEng","-task","resultSet", "-models", "BM25k1.3b0.5_PL2c4.0_LGDc2.0_DirichletLMc500.0_DPH_DFIC_DFRee_DLH13"};
+     //   String[] args ={"AdHocExp","-collection","MQ08", "-tag","HPS","-task","commonalityFast"};
      //  String[] args ={"SystemEvaluator","-collection","MC","-metric","NDCG20","-tags","NoStemTurkish_Zemberek_SnowballTr_F5Stem"};
 //        String[] args ={"Indexer","-collection","MC","-tag","Zemberek"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
-        String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymSnowballEng"};
+        //String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymHPS"};
+        String[] args ={"CorpusBasedStemming","-collection","GOV2","-task","CBSGupta19"};
         //String[] args ={"Custom","-collection","MQ09","-task","search","-tag","SnowballEng"};
   //      String[] args ={"Feature","-collection","MQ09","-tag","SynonymKStem"};
         //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};
