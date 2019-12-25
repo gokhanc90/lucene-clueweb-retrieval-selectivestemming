@@ -395,5 +395,14 @@
             <systemPath>${project.basedir}/lib/NLP-utils-0.0.1-SNAPSHOT.jar</systemPath>
         </dependency>
 
+        <!-- MapDB -->
+        <dependency>
+            <groupId>org.mapdb</groupId>
+            <artifactId>mapdb</artifactId>
+            <version>3.0.7</version>
+        </dependency>
+
+
+
     </dependencies>
 </project>

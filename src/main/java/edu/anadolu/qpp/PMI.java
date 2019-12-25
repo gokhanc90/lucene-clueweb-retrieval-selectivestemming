@@ -79,7 +79,7 @@ public class PMI extends Base {
     }
 
     public double coOccurrenceGupta19(String m1, String m2) throws IOException, ParseException {
-        return  ((double) (term1ANDterm2(m1, m2)*2)) / ((double) (analyzedDF(field, m1) + analyzedDF(field, m2)));
+        return  ((double) (t1ANDt2(m1, m2)*2)) / ((double) (analyzedDF(field, m1) + analyzedDF(field, m2)));
     }
 
 
