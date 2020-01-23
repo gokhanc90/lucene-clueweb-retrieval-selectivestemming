@@ -14,6 +14,7 @@ import edu.anadolu.similarities.DFRee;
 import edu.anadolu.similarities.DLH13;
 import edu.anadolu.similarities.DPH;
 import edu.anadolu.stats.TermStats;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -33,6 +34,8 @@ import org.apache.lucene.util.BytesRefIterator;
 import org.clueweb09.InfoNeed;
 import org.clueweb09.tracks.Track;
 import org.kohsuke.args4j.Option;
+import ws.StemmerBuilder;
+import ws.stemmer.Stemmer;
 
 import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
@@ -99,6 +102,30 @@ public class AdHocExpTool extends CmdLineTool {
         }
 
         DataSet dataset = CollectionFactory.dataset(collection, tfd_home);
+
+        if ("HPSTrain".equals(task)) {
+            Path indexP=null;
+            for (final Path indexPath : discoverIndexes(dataset)) {
+                String tagC = indexPath.getFileName().toString();
+                if (tagC.equals(tag)) indexP = indexPath;
+            }
+
+            File in = indexP.getParent().getParent().resolve("lexicon_" + tag + ".txt").toFile();
+            if (in.exists() && !in.isDirectory()) {
+                Stemmer stemmer = StemmerBuilder.train(in.getAbsolutePath());
+                StemmerBuilder.save(stemmer, "HPS"+collection.toString()+tag+".bin");
+            }else {
+                printLexicon(dataset,Tag.tag(tag));
+                Stemmer stemmer = StemmerBuilder.train(in.getAbsolutePath());
+                StemmerBuilder.save(stemmer, "HPS"+collection.toString()+tag+".bin");
+            }
+
+        }
+
+        if ("printLexicon".equals(task)) {
+            printLexicon(dataset,Tag.tag(tag));
+        }
+
 
         if ("riskGraph".equals(task)) {
             final Evaluator evaluator = new Evaluator(dataset, Tag.NoStem.toString(), measure, models, "evals", "OR");
@@ -250,6 +277,7 @@ public class AdHocExpTool extends CmdLineTool {
         if ("commonalityFast".equals(task)) {
             Analyzer analyzer = Analyzers.analyzer(Tag.tag(tag));
             Map<String,Set<String>> stemVariants = new LinkedHashMap<>();
+            System.out.println(dataset);
             QuerySelector selector = new QuerySelector(dataset, Tag.NoStem.toString());
 
             System.out.println("Query and term commonality");
@@ -378,6 +406,36 @@ public class AdHocExpTool extends CmdLineTool {
         }
 
     }
+    public void printLexicon(DataSet dataSet,Tag tag) throws Exception {
+        for (final Path indexPath : discoverIndexes(dataSet)) {
+            String tagC = indexPath.getFileName().toString();
+            if (tagC.equals(tag.toString())) {
+                File in = indexPath.getParent().getParent().resolve("lexicon_" + tag + ".txt").toFile();
+                in.createNewFile();
+                PrintWriter writer = new PrintWriter(in);
+
+                IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPath));
+                LuceneDictionary ld = new LuceneDictionary(reader, "contents");
+                BytesRefIterator it = ld.getEntryIterator();
+                BytesRef spare;
+
+                long count=0;
+                while ((spare = it.next()) != null) {
+                    if(!StringUtils.isAlphanumeric(spare.utf8ToString())) continue;
+                    writer.println(spare.utf8ToString());
+                    count++;
+                }
+                writer.flush();
+                writer.close();
+
+                System.out.println("lexiconSize:" + count);
+                System.out.println("lexicon "+in.getName()+" is successfully created.");
+
+            }
+        }
+        System.out.println("printLexicon is done.");
+    }
+
     public Set<String> getLexicon(DataSet dataSet,Tag tag) throws Exception {
         for (final Path indexPath : discoverIndexes(dataSet)) {
             String tagC = indexPath.getFileName().toString();
