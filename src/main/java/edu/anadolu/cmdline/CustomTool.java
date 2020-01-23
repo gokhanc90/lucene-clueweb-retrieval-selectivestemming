@@ -5,10 +5,7 @@ import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
 import edu.anadolu.knn.Measure;
-import edu.anadolu.similarities.DFIC;
-import edu.anadolu.similarities.DFRee;
-import edu.anadolu.similarities.DLH13;
-import edu.anadolu.similarities.DPH;
+import edu.anadolu.similarities.*;
 import org.apache.lucene.search.similarities.ModelBase;
 import org.kohsuke.args4j.Option;
 
@@ -80,6 +77,7 @@ public class CustomTool extends CmdLineTool {
             modelBaseSet.add(new DPH());
             modelBaseSet.add(new DLH13());
             modelBaseSet.add(new DFRee());
+            modelBaseSet.add(new IFB2());
 
             if (!props.containsKey(collection.toString() + ".fields"))
                 throw new RuntimeException("cannot find " + collection.toString() + ".fields property!");
