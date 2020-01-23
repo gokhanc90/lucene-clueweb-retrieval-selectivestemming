@@ -46,6 +46,9 @@ public class CollectionFactory {
             case NTCIR:
                 return new NTCIR(tfd_home);
 
+            case WSJ:
+                return new WSJ(tfd_home);
+
             default:
                 throw new RuntimeException(collection + " returned null DataSet");
 

@@ -1,11 +1,17 @@
 package org.clueweb09.tracks;
 
 import org.clueweb09.InfoNeed;
+import org.jsoup.Jsoup;
+import org.jsoup.parser.Parser;
+import org.jsoup.select.Elements;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -230,6 +236,84 @@ public abstract class Track implements Comparable<Track> {
         lines.clear();
 
     }
+
+    /**
+     * Reads topics file in the format of TREC
+     * WSJ
+     * @param topicsPath topics file
+     * @throws IOException exception
+     */
+    void populateInfoNeedsTREC(Path topicsPath) throws IOException {
+
+        List<String> lines = Files.readAllLines(topicsPath, StandardCharsets.UTF_8);
+
+        String number = "";
+        String query = "";
+        String desc = "";
+
+        boolean found = false;
+
+        Iterator<String> iterator = lines.iterator();
+
+        while (iterator.hasNext()) {
+
+            final String line = iterator.next().trim();
+
+            if (!found && "<top>".equals(line)) {
+                found = true;
+                continue;
+            }
+
+            if (found && line.startsWith("<title>")) {
+                int i = line.indexOf(":");
+                query = line.substring(i).trim();
+                if (query.length() == 0)
+                    query = iterator.next().trim();
+            }
+
+//            if (found && line.startsWith("<desc>")) {
+//                iterator.next();
+//                desc="";
+//                while (iterator.hasNext()){
+//                    String l=iterator.next();
+//                    if(l.startsWith("<smry>") || l.startsWith("<narr>")) break;
+//                    desc+=l+ " ";
+//                }
+//                desc=desc.trim();
+//            }
+
+            if (found && line.startsWith("<num>")) {
+                int i = line.lastIndexOf(" ");
+                if (-1 == i) throw new RuntimeException("cannot find space in : " + line);
+                number = line.substring(i).trim();
+            }
+
+            if (found && "</top>".equals(line)) {
+                found = false;
+                int qID = Integer.parseInt(number);
+                if (!isJudged(qID)) {
+                    System.out.println(number + ":" + query + " is not judged. Skipping...");
+                    continue;
+                }
+
+                final Map<String, Integer> innerMap = map.get(qID);
+
+                InfoNeed need = new InfoNeed(qID, MQ09.escape(query), this, innerMap);
+                //InfoNeed need = new InfoNeed(qID, MQ09.escape((query+ " "+desc).trim()), this, innerMap);
+
+                if (need.relevant() == 0) {
+                    System.out.println(need.toString() + " does not have relevant documents. Skipping...");
+                    continue;
+                }
+                needs.add(need);
+            }
+        }
+
+        lines.clear();
+
+    }
+
+
 
     public boolean isJudged(int queryID) {
         return map.containsKey(queryID);
