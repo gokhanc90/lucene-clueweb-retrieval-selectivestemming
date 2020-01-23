@@ -653,7 +653,7 @@ public class Indexer {
         long totalWarcFiles = warcFiles.size();
         System.out.println(totalWarcFiles + " many " + suffix + " files found under the docs path : " + docsPath.toString());
 
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 2000; i++) {
             if (!warcFiles.isEmpty())
                 executor.execute(new IndexerThread(writer, warcFiles.removeFirst()));
             else {
