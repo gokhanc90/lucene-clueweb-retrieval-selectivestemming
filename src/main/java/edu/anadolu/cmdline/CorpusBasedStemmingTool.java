@@ -58,7 +58,17 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
         return "Following properties must be defined in config.properties for " + CLI.CMD + " " + getName() + " paths.indexes tfd.home";
     }
 
-    public static final String[] suffixes = {"ete","ite","ote","ute","ate","acy","t"
+    public static final String[] suffixes = {"ete","ite","ote","ute","ate","acy","t","ct","se","ss","acious","ose","olent","ulent","or","id",
+            "esce","escent","tude","men","momy","scope","scopic","crat","cracy","cratic","archy","arch","mania","manic","maniac","nomy","nomic",
+            "nomical","phobia","phobe","phobic","latry","later","latrous","philia","philiac","phile","phagous","phagy","phage","phage","phage","phage",
+            "logy","graphy","gram","metry","meter","uous","ile","ility","ulous","ulity","ntial","ntal","ial","al","nt","nce","ncy","osity",
+            "ma","me","m","tes","te","t","ite","cyte","llus","ule","cule","cle","cular","el","il","tor","sor","eur","oral","orous","orious","orium",
+            "ion","ive","sia","sy","xia","eia","cy","iac", "aic","scus","sk","sc","erion","omenon","omena","logue","logous","alogy","lity","ty","ity",
+            "nse","nsion","ntion","fic","form","fer","ferous","gate","ntal","ntial","al","alia","alias","arial","erial","orial","an","arian","acian","ian",
+            "ar","ular","ary","arium","ory","asm","ast","astic","y","blast","plast","eous","aneous","anean","ane","aneity","anus","ious","atious","icious",
+            "itious","ation", "icion","ition","ious","fy","efy","ify","ant","ance","ancy","ation","ent","ence","ency","ient","ience","iency","ible","bilia",
+            "able","ine","ina","ure","ura","oid","ode","cide","atic","antic","etic","itic","otic","ice","itia","itium","icious","icial","itial","sis","se","xy",
+            "ate","ator","ic","ism","ical","ist","ize","ment","ous","ed","er","en","est","ful","ing","tion","less","ness","s","es"
     };
 
 
@@ -107,7 +117,7 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
                 ex.printStackTrace();
             }
             return "";
-        }).filter(s->s.length()==0).forEach(s->{
+        }).filter(s->s.length()>0).forEach(s->{
             out.print(s);
             out.flush();
         });
@@ -186,7 +196,7 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
     private Map<String, LinkedHashSet<String>> prefixMap() throws IOException {
         QuerySelector selector = new QuerySelector(dataSet, Tag.NoStem.toString());
 
-        int prefixLength = ((avgTL == null) ? (int) Math.round(getAvgQueryTermLength(selector)) : (int) Math.round(avgTL));
+        int prefixLength = ((avgTL == null) ? (int) Math.round(getAvgTermLength(dataSet,selector)) : (int) Math.round(avgTL));
         return getPrefixTermMap(dataSet, selector, prefixLength);
     }
 
@@ -269,8 +279,9 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
 
     private Long getMaxPair() throws IOException {
 
-
-        OptionalLong max1 = Generator.combination(suffixes).simple(2).stream()
+        HashSet<String> sf = new HashSet<>();
+        Collections.addAll(sf,suffixes);
+        OptionalLong max1 = Generator.combination(sf).simple(2).stream()
                 .map(c -> new Pair<>(c.get(0), c.get(1))).collect(Collectors.toList()).parallelStream().mapToLong(p -> {
                     try {
                         return getSuffixPairOccurrenceFromIndex(p);
@@ -315,7 +326,7 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
                 reader.close();
             }
         }
-        return Sets.intersection(dictionary.get(p.getFirst()), dictionary.get(p.getSecond())).size();
+        return Sets.intersection(map.get(p.getFirst()), map.get(p.getSecond())).size();
     }
 
     public int getSuffixPairOccurrence(Pair<String, String> p) throws IOException {
