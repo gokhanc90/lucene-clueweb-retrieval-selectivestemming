@@ -353,6 +353,7 @@ public class Evaluator {
         if ("DFIC".equals(model)) return true;
         if ("DFRee".equals(model)) return true;
         if ("DLH13".equals(model)) return true;
+        if ("IFB2".equals(model)) return true;
 
         return false;
     }
@@ -387,6 +388,7 @@ public class Evaluator {
             parts.add("DPH");
             parts.add("DFRee");
             parts.add("DLH13");
+            parts.add("IFB2");
             parts.addAll(bestParametricModels);
         }
 

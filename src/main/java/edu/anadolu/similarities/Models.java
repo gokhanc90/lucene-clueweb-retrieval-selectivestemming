@@ -86,6 +86,8 @@ public final class Models {
 
         sims.add(new DFRee());
 
+        sims.add(new IFB2());
+
         /**
          TFNormalization[] normalizations = {new L0(), new L1(), new L2()};
          for (TFNormalization normalization : normalizations) {
