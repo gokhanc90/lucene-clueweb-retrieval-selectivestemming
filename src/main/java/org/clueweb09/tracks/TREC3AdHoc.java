@@ -16,6 +16,6 @@ public class TREC3AdHoc extends Track {
 
     @Override
     protected void populateQRelsMap() throws Exception {
-        populateQRelsMap(Paths.get(home, "topics-and-qrels", "qrels.151-200.txt"));
+        populateQRelsMap(Paths.get(home, "topics-and-qrels", "qrels.151-200-removed.txt"));
     }
 }
