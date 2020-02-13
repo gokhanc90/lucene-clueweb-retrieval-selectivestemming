@@ -105,19 +105,19 @@ public final class FeatureTool extends CmdLineTool {
         sccq.setAnalyzer(comAnalyzer);
 
         QuerySelector querySelector = new QuerySelector(dataset, tag);
-        boolean term = "term".equals(task);
 
         // Print header
 
-            System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tVarIDF\tMeanCTI\tVarCTI\tMeanSkew\tVarSkew\tMeanKurt\tVarKurt\tMeanSCQ\tVarSCQ\tMeanCommonality\tVarCommonality\tSCCS\tMeanSCCQ\tVarSCCQ");
-            System.err.println("QueryID\t"+"word\t"+"ictfs"+"\t"+"idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t"+"DF\t"+"TF\t"+"sccq\t"+"DocLenAcc\t");
-
+        System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tVarIDF\tMeanCTI\tVarCTI\tMeanSkew\tVarSkew\tMeanKurt\tVarKurt\tMeanSCQ\tVarSCQ\tMeanCommonality\tVarCommonality\tSCCS\tMeanSCCQ\tVarSCCQ");
+        if (task.equals("term")) {
+            System.err.println("QueryID\t" + "word\t" + "ictfs" + "\t" + "idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t" + "DF\t" + "TF\t" + "sccq\t" + "DocLenAcc\t");
+        }
         for (InfoNeed need : querySelector.allQueries) {
 
             Map<String, String> map = querySelector.getFrequencyDistributionList(need, "contents_all_freq_1000.csv");
 
             if(map.values().stream().anyMatch(c->c.contains("(stopword)"))){
-                System.err.println(need.query()+" is skipping");
+                //System.err.println(need.query()+" is skipping");
                 continue;
             }
 
@@ -167,6 +167,7 @@ public final class FeatureTool extends CmdLineTool {
             System.out.print(StatUtils.mean(commonalities) + "\t" + StatUtils.variance(commonalities) + "\t");
             System.out.print(sccs.value(need) + "\t");
             System.out.println(StatUtils.mean(sccqs) + "\t" + StatUtils.variance(sccqs));
+            System.gc();
 
         }
 
