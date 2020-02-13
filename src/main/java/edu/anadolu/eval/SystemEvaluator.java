@@ -785,9 +785,27 @@ public class SystemEvaluator{
                 System.out.println(entry.getKey() + "\t" + entry.getValue());
         }
     }
+
+    public void printBestCount(){
+        System.out.print(metric+""+k+"\t");
+        for (String s : tags)
+            System.out.print(s + "\t");
+        System.out.println();
+
+
+        for(String model:modelIntersection) {
+            Map<String, List<InfoNeed>> bestSystemMap = absoluteBestSystemMap(model);
+            System.out.print(model + "\t");
+            for (String s: tags) {
+                System.out.print(bestSystemMap.get(s).size() + "\t");
+            }
+            System.out.println();
+        }
+    }
+
     public Map<String, List<InfoNeed>> absoluteBestSystemMap(String model) {
 
-        Map<String, List<InfoNeed>> map = new HashMap<>();
+        Map<String, List<InfoNeed>> map = new TreeMap<>();
 
         for (InfoNeed need : needs) {
 
@@ -884,5 +902,24 @@ public class SystemEvaluator{
 
 
         return map;
+    }
+
+    public void printAnovaInput() {
+        for(String model:modelIntersection) {
+            System.out.println(model);
+
+            int c=1;
+            for(String tag: tags){
+                for(InfoNeed need:needs){
+                    StringBuilder system=new StringBuilder();
+                    system.append(c + "\t");
+                    system.append(tag + "\t");
+                    system.append(tagEvaluatorMap.get(Tag.tag(tag)).score(need,model)+"\t");
+                    System.out.println(system.toString());
+                }
+                c++;
+            }
+            System.out.println();
+        }
     }
 }

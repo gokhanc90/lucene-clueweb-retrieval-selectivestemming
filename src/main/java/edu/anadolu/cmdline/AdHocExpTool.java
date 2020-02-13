@@ -8,6 +8,7 @@ import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
+import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.knn.Measure;
 import edu.anadolu.similarities.DFIC;
 import edu.anadolu.similarities.DFRee;
@@ -58,7 +59,7 @@ public class AdHocExpTool extends CmdLineTool {
      * Terrier's default values
      */
     @Option(name = "-models", metaVar = "[all|...]", required = false, usage = "term-weighting models")
-    protected String models = "BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0";
+    protected String models = "BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_DFRee_DFIC_DLH13";
 
     @Option(name = "-metric", required = false, usage = "Effectiveness measure; needed only eval task")
     protected Measure measure = Measure.NDCG20;
@@ -76,6 +77,9 @@ public class AdHocExpTool extends CmdLineTool {
     @Option(name = "-task",  metaVar = "[commonality|resultSet]", required = false,
             usage = "commonality: calculates commonality scores of query terms")
     private String task="commonality";
+
+    @Option(name = "-tags", metaVar = "[NoStemTurkish_Zemberek|NoStem_KStem|NoStemTurkish_Zemberek_SnowballTr_F5Stem]", required = false, usage = "For printerWinner Task")
+    protected String tags = "NoStem_SynonymSnowballEng_SynonymKStem_SynonymSnowballEngQBS_SynonymKStemQBS_SynonymHPS_SynonymGupta19";
 
     @Override
     public String getShortDescription() {
@@ -121,6 +125,116 @@ public class AdHocExpTool extends CmdLineTool {
             }
 
         }
+
+        if("printAvgCorpusTermLength".equals(task)){
+            long tokens = 0;
+            long sum = 0;
+            for (final Path indexPath : discoverIndexes(dataset)) {
+                String tagC = indexPath.getFileName().toString();
+                if (tagC.equals(Tag.NoStem.toString())) {
+                    IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPath));
+                    LuceneDictionary ld = new LuceneDictionary(reader, "contents");
+                    BytesRefIterator it = ld.getEntryIterator();
+                    BytesRef spare;
+
+                    while ((spare = it.next()) != null) {
+                        String t = spare.utf8ToString();
+                        if (!StringUtils.isAlpha(t)) continue;
+                        if (t.length() > 23) continue;
+                        tokens++;
+                        sum += t.length();
+                    }
+                    reader.close();
+                }
+            }
+            System.out.println("sum: " + sum + "\ttokens: " + tokens + "\tavg: " + ((double) sum) / tokens);
+        }
+
+        if("printAvgQueryTermLength".equals(task)){
+            QuerySelector querySelector = new QuerySelector(dataset, tag);
+            long tokens = 0;
+            long sum = 0;
+            Set<String> distinctQueryTerms = new LinkedHashSet<>(1024);
+            HashMap<String,Set<String>> trackQueryMap = new HashMap<>();
+            for (InfoNeed need : querySelector.allQueries) {
+                for (String t : Analyzers.getAnalyzedTokens(need.query(), querySelector.analyzer())) {
+                    distinctQueryTerms.add(t);
+                    if(trackQueryMap.get(need.getWT().toString())==null) trackQueryMap.put(need.getWT().toString(), new HashSet<>(Arrays.asList(t)));
+                    else {
+                        Set<String> s= trackQueryMap.get(need.getWT().toString());
+                        s.add(t);
+                        trackQueryMap.put(need.getWT().toString(),s);
+                    }
+                }
+            }
+            for (String t : distinctQueryTerms) {
+                tokens++;
+                sum += t.length();
+            }
+            for(Map.Entry<String,Set<String>> e: trackQueryMap.entrySet()) {
+                System.out.println(e.getKey()+": "+e.getValue().stream().map(l -> l.length()).mapToInt(Integer::intValue).average().getAsDouble()+ " distincts: "+e.getValue().size());
+            }
+            System.out.println("sum: " + sum + "\tDistinct tokens in query set: " + tokens + "\tavg: " + ((double) sum) / tokens);
+
+        }
+        if("printWinner".equals(task)){
+            Measure[] measures = {Measure.MAP,Measure.NDCG20,Measure.NDCG100};
+            for(Measure measure : measures) {
+                String op = "OR";
+                String evalDirectory = "evals";
+
+                final String[] tagsArr = tags.split("_");
+                Set<String> modelIntersection = new HashSet<>();
+
+                Map<Tag, Evaluator> evaluatorMap = new HashMap<>();
+
+                for (int i = 0; i < tagsArr.length; i++) {
+                    String tag = tagsArr[i];
+                    final Evaluator evaluator = new Evaluator(dataset, tag, measure, models, evalDirectory, op);
+                    evaluator.oracleMax();
+                    evaluatorMap.put(Tag.tag(tag), evaluator);
+                    //needs = evaluator.getNeeds();
+
+                    if (i == 0)
+                        modelIntersection.addAll(evaluator.getModelSet());
+                    else
+                        modelIntersection.retainAll(evaluator.getModelSet());
+                }
+
+                SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
+                systemEvaluator.printBestCount();
+            }
+        }
+
+        if("printAnova".equals(task)){
+            Measure[] measures = {Measure.MAP,Measure.NDCG20,Measure.NDCG100};
+            for(Measure measure : measures) {
+                String op = "OR";
+                String evalDirectory = "evals";
+
+                final String[] tagsArr = tags.split("_");
+                Set<String> modelIntersection = new HashSet<>();
+
+                Map<Tag, Evaluator> evaluatorMap = new HashMap<>();
+
+                for (int i = 0; i < tagsArr.length; i++) {
+                    String tag = tagsArr[i];
+                    final Evaluator evaluator = new Evaluator(dataset, tag, measure, models, evalDirectory, op);
+                    evaluator.oracleMax();
+                    evaluatorMap.put(Tag.tag(tag), evaluator);
+                    //needs = evaluator.getNeeds();
+
+                    if (i == 0)
+                        modelIntersection.addAll(evaluator.getModelSet());
+                    else
+                        modelIntersection.retainAll(evaluator.getModelSet());
+                }
+
+                SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
+                systemEvaluator.printBestCount(); //ANOVA not complete
+            }
+        }
+
 
         if ("printLexicon".equals(task)) {
             printLexicon(dataset,Tag.tag(tag));
