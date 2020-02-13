@@ -104,7 +104,7 @@ public class SystemEvaluatorTool extends CmdLineTool {
         systemEvaluator.printFacets();
 
         System.out.println("========= SPSS ANOVA Input ===========");
-        systemEvaluator.printAnovaInput();
+        systemEvaluator.printAnova();
 
     }
 

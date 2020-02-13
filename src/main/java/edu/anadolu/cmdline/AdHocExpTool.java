@@ -231,7 +231,7 @@ public class AdHocExpTool extends CmdLineTool {
                 }
 
                 SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
-                systemEvaluator.printBestCount(); //ANOVA not complete
+                systemEvaluator.printAnova(); //ANOVA not complete
             }
         }
 
