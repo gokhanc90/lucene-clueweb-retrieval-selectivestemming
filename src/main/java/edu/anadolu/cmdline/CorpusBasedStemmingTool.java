@@ -3,12 +3,15 @@ package edu.anadolu.cmdline;
 import com.google.common.collect.Sets;
 import com.google.common.graph.*;
 import edu.anadolu.QuerySelector;
+import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
 import edu.anadolu.qpp.PMI;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.util.CombinatoricsUtils;
+import org.apache.commons.math3.util.MathUtils;
 import org.apache.commons.math3.util.Pair;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -18,18 +21,24 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.clueweb09.InfoNeed;
+import org.jetbrains.annotations.NotNull;
 import org.kohsuke.args4j.Option;
 import org.paukov.combinatorics3.Generator;
 import org.paukov.combinatorics3.IGenerator;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.channels.AsynchronousFileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.FileAttribute;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CorpusBasedStemmingTool extends CmdLineTool{
 
@@ -106,9 +115,9 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
     }
 
     private void morphologicalClassFormulation(Map<String, LinkedHashSet<String>> prefixVariants) throws IOException, ParseException {
-        PrintWriter out = new PrintWriter(Files.newBufferedWriter(Paths.get("SynonymGupta19"+collection+".txt"), StandardCharsets.US_ASCII));
-
-        prefixVariants.entrySet().parallelStream().map(e-> {
+        AtomicReference<FileWriter> out = new AtomicReference<>(new FileWriter(new File(Paths.get("SynonymGupta19"+collection+".txt").toUri())));
+        System.out.println(collection+" work count:"+ prefixVariants.values().parallelStream().map(l->l.size()).filter(f->f>1).collect(Collectors.toList()).size());
+        prefixVariants.entrySet().stream().map(e-> {
             try {
                 return graphWork(e.getValue());
             } catch (IOException ex) {
@@ -118,32 +127,36 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
             }
             return "";
         }).filter(s->s.length()>0).forEach(s->{
-            out.print(s);
-            out.flush();
+            try {
+                out.get().append(s+System.lineSeparator());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println(s);
         });
 
-        out.flush();
-        out.close();
+        out.get().flush();
+        out.get().close();
     }
 
     public String graphWork(LinkedHashSet<String> nodes)throws IOException, ParseException{
         IGenerator<List<String>> pairs = Generator.combination(nodes).simple(2);
-
+        //if(nodes.size()>0)  System.out.println("Number of nodes: "+nodes.size());
         Iterator<List<String>> it = pairs.iterator();
         MutableValueGraph<String,Double> graph = ValueGraphBuilder.undirected().build();
-        System.out.println("Initial graph is constructing");
+        //System.out.println("Initial graph is constructing");
         while(it.hasNext()){
             List<String> pair = it.next();
             String t1 = pair.get(0);
             String t2 = pair.get(1);
             double coOccurrence = coOccurrenceSim(t1,t2);
             double suffixSim = potentialSuffixPairSim(t1,t2);
-            if (coOccurrence == 0 && suffixSim == 0) continue;
+            if (coOccurrence < 1.0E-5 || suffixSim < 1.0E-5) continue;
             double weight = coOccurrence + suffixSim + LexicalSim(t1,t2);
             graph.putEdgeValue(pair.get(0),pair.get(1),weight);
         }
         if(graph.nodes().size()==0) return "";
-        System.out.println("Initial graph is constructed");
+        //System.out.println("Initial graph is constructed");
         //for(String n: graph.nodes()) System.out.println(graph.adjacentNodes(n));
 
         Set<String> sortedNodes = graph.nodes().stream().sorted((o1, o2) -> {
@@ -163,7 +176,7 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
 //
 //            }
 
-        System.out.println("Last graph is constructing...");
+        //System.out.println("Last graph is constructing...");
         for (String node : sortedNodes) {
             Set<String> adjacentNodes = graph.adjacentNodes(node);
 
@@ -175,21 +188,25 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
 
             for (String adNode : sortedAd) {
                 Set<String> u = new LinkedHashSet<>(graph.adjacentNodes(node));
+                u.add(node);
                 Set<String> v = new LinkedHashSet<>(graph.adjacentNodes(adNode));
+                v.add(adNode);
                 double association = Sets.intersection(u, v).size() / (double) (Sets.union(u, v).size());
-                if (association < 0.2) graph.removeEdge(node, adNode);
+                if (association < 0.2)
+                    graph.removeEdge(node, adNode);
             }
         }
-        System.out.println("Last graph is writing...");
+       // System.out.println("Last graph is writing...");
         StringBuilder br = new StringBuilder();
+       // System.out.println(graph.nodes());
+      //  System.out.println("Number of nodes: "+nodes.size());
         for (String q : Sets.intersection(queryTerms, graph.nodes())) {
             if(graph.adjacentNodes(q).size()==0) continue;
             br.append(q + ", " + graph.adjacentNodes(q).toString().replaceAll("[\\[\\]]", ""));
-            br.append(System.lineSeparator());
 
             //System.out.println(q + ", " + graph.adjacentNodes(q).toString().replaceAll("[\\[\\]]", ""));
         }
-        System.out.println("Last graph is written");
+       // System.out.println("Last graph is written");
         return br.toString();
     }
 
@@ -206,8 +223,9 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
 
         for (InfoNeed need : selector.allQueries) {
 
-            for (String t : need.getPartialQuery()) {
-                if (t.length() < prefixLength) continue;
+            for (String t : Analyzers.getAnalyzedTokens(need.query(),selector.analyzer())) {
+                if (t.length() <= prefixLength) continue;
+                if(!StringUtils.isAlpha(t)) continue;
                 queryTerms.add(t);
                 String prefix = StringUtils.left(t, prefixLength);
                 if (map.containsKey(prefix)) {
@@ -232,12 +250,13 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
 
                 while ((spare = it.next()) != null) {
                     String t = spare.utf8ToString();
-                    if (t.length() < prefixLength) continue;
-
+                    if (t.length() <= prefixLength) continue;
+                    if(!StringUtils.isAlpha(t)) continue;
                     String prefix = StringUtils.left(t, prefixLength);
 
                     if (map.containsKey(prefix)) {
                         LinkedHashSet<String> variants = map.get(prefix);
+                        if(variants.size()>1000) continue;
                         variants.add(t);
                         map.put(prefix, variants);
                     }
@@ -280,20 +299,83 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
     private Long getMaxPair() throws IOException {
 
         HashSet<String> sf = new HashSet<>();
-        Collections.addAll(sf,suffixes);
-        OptionalLong max1 = Generator.combination(sf).simple(2).stream()
-                .map(c -> new Pair<>(c.get(0), c.get(1))).collect(Collectors.toList()).parallelStream().mapToLong(p -> {
-                    try {
-                        return getSuffixPairOccurrenceFromIndex(p);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+        TreeMap<String,LinkedHashSet<String>> map = new TreeMap<>();
+        for (final Path indexPath : discoverIndexes(dataSet)) {
+            String tagC = indexPath.getFileName().toString();
+            if (tagC.equals(Tag.NoStem.toString())) {
+                IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPath));
+                LuceneDictionary ld = new LuceneDictionary(reader, "contents");
+
+                BytesRefIterator it = ld.getEntryIterator();
+                BytesRef spare;
+                while ((spare = it.next()) != null) {
+                    String t = spare.utf8ToString();
+                    if (t.length() <= prefixL4suffix) continue;
+                    if(!StringUtils.isAlpha(t)) continue;
+                    String suffix = StringUtils.substring(t, prefixL4suffix);
+
+                    if (map.containsKey(suffix)) {
+                        LinkedHashSet<String> variants = map.get(suffix);
+                        variants.add(t.substring(0, prefixL4suffix));
+                        map.put(suffix, variants);
+                    } else {
+                        LinkedHashSet<String> variants = new LinkedHashSet<>();
+                        variants.add(t.substring(0, prefixL4suffix));
+                        map.put(suffix, variants);
                     }
-                    return 0;
-                }).max();
+
+                    sf.add(suffix);
+                }
+
+                reader.close();
+            }
+        }
+
+        System.out.println("Suffix size: "+sf.size());
+        int maxVariant=map.values().stream().map(e->e.size()).max(Integer::compareTo).get();
+        System.out.println("Unique term count that have same suffix: "+maxVariant);
+        return Long.valueOf(maxVariant);
+//
+//        Iterator<List<String>> it = Generator.combination(sf).simple(2).iterator();
+//
+//        Pair<String,String> mx = null;
+//        int cn=0;
+//        while (it.hasNext()){
+//            List<String> b = it.next();
+//            LinkedHashSet l1 = map.get(b.get(0));
+//            LinkedHashSet l2 = map.get(b.get(1));
+//
+//            int tc = Sets.intersection(l1,l2).size();
+//            if(tc>cn){
+//                cn=tc;
+//                mx=new Pair<>(b.get(0),b.get(1));
+//                System.out.println(mx+" "+cn);
+//            }
+//        }
+//        System.out.println(mx+" "+cn);
+//        return Long.valueOf(cn);
+//
+        //----------------------------------------------------------/
+//      //  Collections.addAll(sf,suffixes);
+//        OptionalLong max1 = Generator.combination(sf).simple(2).stream()
+//                .map(c -> new Pair<>(c.get(0), c.get(1))).collect(Collectors.toList()).parallelStream().mapToLong(p -> {
+//                    try {
+//                        return getSuffixPairOccurrenceFromIndex(p);
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                    return 0;
+//                }).max();
+//
+//
+//        System.out.println("Max pair count: "+max1.getAsLong());
 
 
-        System.out.println("Max pair count: "+max1.getAsLong());
-        return max1.getAsLong();
+//        try {
+//            return Long.valueOf(findMaxWithThread(it,sf.size()));
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
     }
 
     public int getSuffixPairOccurrenceFromIndex(Pair<String, String> p) throws IOException {
@@ -312,7 +394,7 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
                 BytesRef spare;
                 while ((spare = it.next()) != null) {
                     String t = spare.utf8ToString();
-                    if (t.length() < prefixL4suffix) continue;
+                    if (t.length() <= prefixL4suffix) continue;
 
                     String suffix = StringUtils.substring(t, prefixL4suffix);
 
@@ -337,13 +419,12 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
 
 
     private int getOccurrenceOfPair(Pair<String, String> pair) throws IOException {
-        int count = 0;
         int theta = 5;
-        long inters = 0;
-        inters = getSuffixPairOccurrence(pair);
+        int inters = 0;
+        inters = getSuffixPairOccurrence(pair); //pair of prefixes
 
         if(inters<theta) return 0;
-        return count;
+        return inters;
     }
 
     private double getAvgTermLength(DataSet dataSet,QuerySelector selector) throws IOException {
@@ -358,9 +439,11 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
                 BytesRef spare;
 
                 while ((spare = it.next()) != null) {
-                    if(spare.utf8ToString().length()>23) continue;
+                    String t = spare.utf8ToString();
+                    if(!StringUtils.isAlpha(t)) continue;
+                    if(t.length()>23) continue;
                     tokens++;
-                    sum+= spare.utf8ToString().length();
+                    sum+= t.length();
                 }
                 reader.close();
             }
@@ -369,36 +452,20 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
         return ((double)sum)/tokens;
     }
 
-    private double getAvgQueryTermLength(QuerySelector selector) throws IOException {
-        long tokens=0;
-        long sum=0;
-        Set<String> distinctQueryTerms = new LinkedHashSet<>(1024);
-        for (InfoNeed need : selector.allQueries) {
-            for (String t : need.getPartialQuery()) {
-                distinctQueryTerms.add(t);
-            }
-        }
-        for(String t : distinctQueryTerms) {
-            tokens++;
-            sum += t.length();
-        }
-        System.out.println("sum: "+ sum +"\tDistinct tokens in query set: " +tokens+"\tavg: "+((double)sum)/tokens);
-        return ((double)sum)/tokens;
-    }
 
     public void loadVariantsSuffixes(DataSet dataSet, Map<String, LinkedHashSet<String>> prefixVariants) throws IOException {
 
         for (Map.Entry<String, LinkedHashSet<String>> e : prefixVariants.entrySet()) {
             for (String t : e.getValue()) {
-                if (t.length() < prefixL4suffix) continue;
+                if (t.length() <= prefixL4suffix) continue;
                 String suffix = StringUtils.substring(t, prefixL4suffix);
                 if (dictionary.containsKey(suffix)) {
                     LinkedHashSet<String> variants = dictionary.get(suffix);
-                    variants.add(t);
+                    variants.add(t.substring(0, prefixL4suffix));
                     dictionary.put(suffix, variants);
                 } else {
                     LinkedHashSet<String> variants = new LinkedHashSet<>();
-                    variants.add(t);
+                    variants.add(t.substring(0, prefixL4suffix));
                     dictionary.put(suffix, variants);
                 }
             }
@@ -412,18 +479,118 @@ public class CorpusBasedStemmingTool extends CmdLineTool{
                 BytesRefIterator it = ld.getEntryIterator();
                 BytesRef spare;
                 while ((spare = it.next()) != null) {
-                    if(spare.utf8ToString().length()<prefixL4suffix) continue;
-                    String suffix = StringUtils.substring(spare.utf8ToString(), prefixL4suffix);
+                    String t = spare.utf8ToString();
+                    if(t.length()<=prefixL4suffix) continue;
+                    String suffix = StringUtils.substring(t, prefixL4suffix);
                     if(!dictionary.containsKey(suffix)) continue;
 
                     LinkedHashSet<String> variants = dictionary.get(suffix);
-                    variants.add(spare.utf8ToString());
+                    variants.add(t.substring(0, prefixL4suffix));
                     dictionary.put(suffix, variants);
 
                 }
                 reader.close();
             }
         }
+    }
+
+    public Integer findMaxWithThread(Iterator<List<String>> it,long size) throws InterruptedException, ExecutionException {
+
+        final ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(16);
+        Deque<Future<Pair<Pair<String,String>,Integer>>> deque = new ArrayDeque<>();
+        for (int i = 0; i < 200000; i++) {
+            if (it.hasNext()) {
+                Future<Pair<Pair<String,String>,Integer>> f = executor.submit(() -> {
+                    List<String> b = it.next();
+                    Pair<String,String> t = new Pair<>(b.get(0),b.get(1));
+                    int occ = getSuffixPairOccurrenceFromIndex(t);
+                    return new Pair<>(t,occ);
+                });
+                deque.addLast(f);
+            }else {
+                if (!executor.isShutdown()) {
+                    Thread.sleep(15000);
+                    executor.shutdown();
+                }
+                break;
+            }
+        }
+
+        int max = 0;
+        Pair<String,String> maxPair =null;
+        while(deque.getFirst().isDone()){
+            Future<Pair<Pair<String,String>,Integer>> f = deque.removeFirst();
+            if(f.get().getSecond()>max){
+                max=f.get().getSecond();
+                maxPair=f.get().getFirst();
+            }
+        }
+
+        long previous = 0;
+        //add some delay to let some threads spawn by scheduler
+        Thread.sleep(15000);
+
+
+        try {
+            // Wait for existing tasks to terminate
+            while (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+
+                System.out.print(String.format("%d  completed. Current Max: %d %s ", executor.getCompletedTaskCount() , max,maxPair));
+                System.out.println("activeCount = " + executor.getActiveCount() + " completed task = " + executor.getCompletedTaskCount() + " task count = " + executor.getTaskCount());
+
+                final long completedTaskCount = executor.getCompletedTaskCount();
+
+                if (it.hasNext()) {
+                    for (long i = previous; i < completedTaskCount; i++) {
+                        if (it.hasNext()) {
+                            Future<Pair<Pair<String,String>,Integer>> f = executor.submit(() -> {
+                                List<String> b = it.next();
+                                Pair<String,String> t = new Pair<>(b.get(0),b.get(1));
+                                int occ = getSuffixPairOccurrenceFromIndex(t);
+                                return new Pair<>(t,occ);
+                            });
+                            deque.addLast(f);
+                        } else {
+                            if (!executor.isShutdown())
+                                executor.shutdown();
+                        }
+                    }
+                    previous = completedTaskCount;
+                    while(deque.getFirst().isDone()){
+                        Future<Pair<Pair<String,String>,Integer>> f = deque.removeFirst();
+                        if(f.get().getSecond()>max){
+                            max=f.get().getSecond();
+                            maxPair=f.get().getFirst();
+                        }
+                    }
+                    Thread.sleep(1000);
+                }
+                while(deque.size()>0){
+                    Future<Pair<Pair<String,String>,Integer>> f = deque.removeFirst();
+                    if(f.get().getSecond()>max){
+                        max=f.get().getSecond();
+                        maxPair=f.get().getFirst();
+                    }
+                }
+            }
+        } catch (InterruptedException ie) {
+            // (Re-)Cancel if current thread also interrupted
+            executor.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Max pair and count : "+max+" "+ maxPair);
+        System.out.println("outside while pool size = " + executor.getPoolSize() + " activeCount = " + executor.getActiveCount() + " completed task = " + executor.getCompletedTaskCount() + " task count = " + executor.getTaskCount());
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(15000, TimeUnit.MILLISECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+        }
+        return max;
     }
 
 }

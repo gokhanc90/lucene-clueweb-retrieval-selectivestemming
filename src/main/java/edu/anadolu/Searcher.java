@@ -122,6 +122,7 @@ public class Searcher implements Closeable {
         if(analyzerTag.toString().contains("SynonymSnowballEng")) this.analyzerTag=Tag.SynonymSnowballEng;
         if(analyzerTag.toString().contains("SynonymKStem")) this.analyzerTag=Tag.SynonymKStem;
         if(analyzerTag.toString().contains("SynonymHPS")) this.analyzerTag=Tag.SynonymHPS;
+        if(analyzerTag.toString().contains("SynonymGupta19")) this.analyzerTag=Tag.SynonymGupta19;
         if(analyzerTag.toString().contains("QBS")) this.weightedFunc="QBS";
 
         this.reader = DirectoryReader.open(FSDirectory.open(indexPath));

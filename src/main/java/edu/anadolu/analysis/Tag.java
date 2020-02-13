@@ -7,7 +7,7 @@ public enum Tag {
 
     NoStem, KStem, ICU, Latin, Zemberek, NoStemTurkish, KStemField, Script, UAX, ASCII, SnowballTr,SnowballEng, Sstem, F5Stem,
     BoilerpipeArt, BoilerpipeLC, BoilerpipeDefault,CustomBoilerPipe,CustomBoilerPipeAndJsoup,CustomRemovalBoilerPipeAndJsoup,SynonymSnowballEng,SynonymKStem,
-    SynonymSnowballEngQBS,SynonymKStemQBS, HPS,SynonymHPS,;
+    SynonymSnowballEngQBS,SynonymKStemQBS, HPS,SynonymHPS,SynonymGupta19;
 
     public static Tag tag(String indexTag) {
 
