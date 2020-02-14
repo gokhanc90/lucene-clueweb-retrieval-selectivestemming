@@ -241,10 +241,10 @@ public class SystemEvaluator{
         for(String model:modelIntersection) {
             Solution s = oracleMaxAsSolution(needs, model);
             TTest tTest = new TTest();
-            boolean isSig=false;
+            boolean isSig=true;
             for (String tag : tags) {
                 double[] scoreArray = tagEvaluatorMap.get(Tag.tag(tag)).scoreArray(model,needs);
-                if (tTest.pairedTTest(scoreArray, s.scores(), 0.05)) isSig=true;
+                if (!tTest.pairedTTest(scoreArray, s.scores(), 0.05)) isSig=false;
             }
 
             if(isSig)   System.out.println(s.key + "* max:\t" + s.getMean() + "\t" + s.hits0 + "\t" + s.hits1 + "\t" + s.hits2);
@@ -928,5 +928,29 @@ public class SystemEvaluator{
             System.out.println(e.getKey()+"\t"+homogeityPVal+"\t"+anovaPVal);
         }
 
+    }
+
+    public void printScoreTable() {
+        for(String model:modelIntersection) {
+            for(String tag: tags){
+                double avgScore = tagEvaluatorMap.get(Tag.tag(tag)).averagePerModel(model).score;
+                System.out.println(metric+""+k+"\t"+model +"\t"+ tag +"\t"+ String.format("%.4f",avgScore));
+            }
+            Solution s = oracleMaxAsSolution(needs,model);
+            double oracle = s.getMean();
+            if(isOracleSignificant(s))  System.out.println(metric+""+k+"\t"+model +"\t"+ "Oracle" +"\t"+ String.format("%.4f",oracle)+"*");
+            else System.out.println(metric+""+k+"\t"+model +"\t"+ "Oracle" +"\t"+ String.format("%.4f",oracle));
+        }
+    }
+
+    public boolean isOracleSignificant( Solution s){
+        TTest tTest = new TTest();
+        boolean isSig=true;
+        for (String tag : tags) {
+            double[] scoreArray = tagEvaluatorMap.get(Tag.tag(tag)).scoreArray(s.model,needs);
+            if (!tTest.pairedTTest(scoreArray, s.scores(), 0.05)) isSig=false;
+        }
+
+       return isSig;
     }
 }

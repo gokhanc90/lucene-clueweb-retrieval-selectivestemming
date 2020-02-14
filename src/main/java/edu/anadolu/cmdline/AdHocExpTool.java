@@ -235,6 +235,34 @@ public class AdHocExpTool extends CmdLineTool {
             }
         }
 
+        if("printScoreTable".equals(task)){
+            Measure[] measures = {Measure.MAP,Measure.NDCG20,Measure.NDCG100};
+            for(Measure measure : measures) {
+                String op = "OR";
+                String evalDirectory = "evals";
+
+                final String[] tagsArr = tags.split("_");
+                Set<String> modelIntersection = new HashSet<>();
+
+                Map<Tag, Evaluator> evaluatorMap = new HashMap<>();
+
+                for (int i = 0; i < tagsArr.length; i++) {
+                    String tag = tagsArr[i];
+                    final Evaluator evaluator = new Evaluator(dataset, tag, measure, models, evalDirectory, op);
+                    evaluator.oracleMax();
+                    evaluatorMap.put(Tag.tag(tag), evaluator);
+                    //needs = evaluator.getNeeds();
+
+                    if (i == 0)
+                        modelIntersection.addAll(evaluator.getModelSet());
+                    else
+                        modelIntersection.retainAll(evaluator.getModelSet());
+                }
+
+                SystemEvaluator systemEvaluator = new SystemEvaluator(evaluatorMap);
+                systemEvaluator.printScoreTable();
+            }
+        }
 
         if ("printLexicon".equals(task)) {
             printLexicon(dataset,Tag.tag(tag));
