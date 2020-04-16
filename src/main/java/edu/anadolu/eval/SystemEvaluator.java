@@ -907,25 +907,32 @@ public class SystemEvaluator{
     }
 
     public void printAnova() {
-        TreeMap<String,List<List<Double>>> modelScores = new TreeMap<>();
+        TreeMap<String,Map<String,List<Double>>> modelScores = new TreeMap<>();
         for(String model:modelIntersection) {
-           List<List<Double>> groups = new ArrayList<>();
+           Map<String,List<Double>> groups = new TreeMap<>();
             for(String tag: tags){
+                if(tag.equals("NoStem")) continue;
                 double[] scores = tagEvaluatorMap.get(Tag.tag(tag)).scoreArray(model);
-                groups.add(Arrays.stream(scores).boxed().collect(Collectors.toList()));
+                if(tagEvaluatorMap.get(Tag.tag(tag)).averagePerModel(model).score < tagEvaluatorMap.get(Tag.NoStem).averagePerModel(model).score) //ignore lower avg score than nostem
+                    continue;
+                groups.put(tag,Arrays.stream(scores).boxed().collect(Collectors.toList()));
             }
             modelScores.put(model,groups);
         }
 
-        System.out.println(metric+""+k+"\t"+"Levene's Test p_value"+"\t"+"ANOVA Test p_value");
-        for(Map.Entry<String,List<List<Double>>> e: modelScores.entrySet()) {
-            LeveneTest homogeneity = new LeveneTest(e.getValue());
+        System.out.println(metric+""+k+"\t"+"Levene's Test p_value"+"\t"+"ANOVA Test p_value"+"\t"+"Systems");
+        for(Map.Entry<String,Map<String,List<Double>>> e: modelScores.entrySet()) {
+            if(e.getValue().keySet().size()<2){
+                System.out.println(e.getKey()+"\t"+"Degrees of freedom is 0");
+                continue;
+            }
+            LeveneTest homogeneity = new LeveneTest( e.getValue().values().stream().collect(Collectors.toList()));
             OneWayAnova anova = new OneWayAnova();
-            List<double[]> anovaIn = e.getValue().stream().map(l->l.stream().mapToDouble(d->d).toArray()).collect(Collectors.toList());
+            List<double[]> anovaIn = e.getValue().values().stream().map(l->l.stream().mapToDouble(d->d).toArray()).collect(Collectors.toList());
             double homogeityPVal=homogeneity.getPValue();
             double anovaPVal=anova.anovaPValue(anovaIn);
 
-            System.out.println(e.getKey()+"\t"+homogeityPVal+"\t"+anovaPVal);
+            System.out.println(e.getKey()+"\t"+homogeityPVal+"\t"+anovaPVal+"\t"+ e.getValue().keySet());
         }
 
     }

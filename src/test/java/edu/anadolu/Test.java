@@ -18,10 +18,12 @@ import edu.anadolu.knn.Measure;
 import edu.anadolu.qpp.CTI;
 import edu.anadolu.qpp.Commonality;
 import edu.anadolu.similarities.DPH;
-import edu.anadolu.stats.TermStats;
+import edu.anadolu.stats.LeveneTest;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.stat.inference.ChiSquareTest;
+import org.apache.commons.math3.stat.inference.OneWayAnova;
 import org.apache.commons.math3.stat.inference.TTest;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.Pair;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -31,17 +33,23 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.clueweb09.ClueWeb12WarcRecord;
+import org.clueweb09.InfoNeed;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
 import org.jsoup.nodes.Document;
+import org.jsoup.parser.Parser;
+import org.jsoup.select.Elements;
 import org.paukov.combinatorics3.Generator;
+import org.xml.sax.helpers.DefaultHandler;
 import ws.StemmerBuilder;
 import ws.stemmer.Stemmer;
 
 import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -620,23 +628,46 @@ public class Test {
         //CLI.main(args);
     }
 
-    @org.junit.Test
+
+
+        @org.junit.Test
     public void CLITest() throws Exception {
      //   String[] args ={"TFDistribution","-collection","MC","-task","term"};
       //  String[] args = {"SelectiveStemming", "-collection", "MC", "-tags", "NoStemTurkish_Zemberek", "-metric","NDCG20", "-spam", "0", "-selection", "MSTDF", "-binDF","10"};
         //String[] args ={"Stats","-collection","MQ07","-task","queryLength"};
         //String[] args ={"AdHocExp","-collection","MQ09", "-tag","SnowballEng","-task","resultSet", "-models", "BM25k1.3b0.5_PL2c4.0_LGDc2.0_DirichletLMc500.0_DPH_DFIC_DFRee_DLH13"};
      //   String[] args ={"AdHocExp","-collection","MQ08", "-tag","HPS","-task","commonalityFast"};
-     //  String[] args ={"SystemEvaluator","-collection","MC","-metric","NDCG20","-tags","NoStemTurkish_Zemberek_SnowballTr_F5Stem"};
-//        String[] args ={"Indexer","-collection","MC","-tag","Zemberek"};
+     //  String[] args ={"SystemEvaluator","-collection","GOV2","-metric","MAP","-models","BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_LGD_DFRee_DLH13","-tags","NoStem_SynonymSnowballEng_SynonymKStem"};
+     //   String[] args ={"Indexer","-collection","WSJ","-tag","NoStem"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
         //String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymHPS"};
-        String[] args ={"CorpusBasedStemming","-collection","GOV2","-task","CBSGupta19"};
-        //String[] args ={"Custom","-collection","MQ09","-task","search","-tag","SnowballEng"};
+        String[] args ={"CorpusBasedStemming","-collection","GOV2","-task","CBSGupta19","-maxPair","71108","-avgTL","6.0"};
+      //    String[] args ={"Custom","-collection","WSJ","-task","search","-tag","NoStem"};
   //      String[] args ={"Feature","-collection","MQ09","-tag","SynonymKStem"};
         //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};
-
+    //    CollectionFactory.dataset(Collection.WSJ,"D:\\TFD_HOME");
         CLI.main(args);
+    }
+
+    @org.junit.Test
+    public void testLevene() throws Exception {
+        ArrayList<List<Double>> samples = new ArrayList<>();
+        samples.add(Arrays.asList(1.0,2.0,3.0,4.0,5.0,6.0));
+        samples.add(Arrays.asList(7.0,8.0,5.0,10.5,12.5,8.0));
+        samples.add(Arrays.asList(7.5,8.2,7.6,5.0,9.0,2.0));
+        LeveneTest test = new LeveneTest(samples);
+        System.out.println(test.getPValue());
+        System.out.println(test.getLeveneStatistic());
+        System.out.println(test.getDF1());
+        System.out.println(test.getDF2());
+    }
+
+    @org.junit.Test
+    public void testQuerySelector() throws Exception {
+        DataSet dataset = CollectionFactory.dataset(Collection.WSJ, "D:\\Ubuntu\\TFD_HOME");
+        QuerySelector querySelector = new QuerySelector(dataset, "NoStem");
+        for(InfoNeed i: querySelector.allQueries)
+            System.out.println(i.query());
     }
 
     @org.junit.Test
@@ -647,6 +678,14 @@ public class Test {
 
         Analyzer a = Analyzers.analyzer(Tag.HPS);
         System.out.println(Analyzers.getAnalyzedTokens("written readings",a));
+    }
+
+    @org.junit.Test
+    public void xmlTest() throws Exception {
+        File inputFile = new File("wsj7_001");
+        Document doc = Jsoup.parse(new FileInputStream(inputFile),"UTF8","",Parser.xmlParser());
+        Elements elements = doc.select("DOC");
+        System.out.println(elements.get(1).select("TEXT").get(0).text());
     }
 
     @org.junit.Test
