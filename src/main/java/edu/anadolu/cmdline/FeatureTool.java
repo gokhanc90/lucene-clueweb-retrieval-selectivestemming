@@ -9,10 +9,12 @@ import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
 import edu.anadolu.knn.Measure;
 import edu.anadolu.qpp.*;
+import edu.anadolu.similarities.*;
 import edu.anadolu.stats.DocLengthStats;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.search.similarities.ModelBase;
 import org.clueweb09.InfoNeed;
 import org.kohsuke.args4j.Option;
 
@@ -103,14 +105,19 @@ public final class FeatureTool extends CmdLineTool {
         sccs.setAnalyzer(comAnalyzer);
         SCCQ sccq = new SCCQ(dataset.indexesPath().resolve(tag));
         sccq.setAnalyzer(comAnalyzer);
+        Advance adv = new Advance(dataset.indexesPath().resolve(tag));
+        GeneralizedTW generalizedTW = new GeneralizedTW(dataset.indexesPath().resolve(tag));
 
         QuerySelector querySelector = new QuerySelector(dataset, tag);
 
         // Print header
 
-        System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tVarIDF\tMeanCTI\tVarCTI\tMeanSkew\tVarSkew\tMeanKurt\tVarKurt\tMeanSCQ\tVarSCQ\tMeanCommonality\tVarCommonality\tSCCS\tMeanSCCQ\tVarSCCQ");
+        System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tVarIDF\tMeanCTI\tVarCTI" +
+                "\tMeanSkew\tVarSkew\tMeanKurt\tVarKurt\tMeanSCQ\tVarSCQ\tMeanCommonality\tVarCommonality\tSCCS\tMeanSCCQ\tVarSCCQ\tAdvance" +
+                "\tBM25"+"\tDLM"+"\tLGD"+"\tPL2"+"\tDFIC"+"\tDPH"+"\tDLH13"+"\tDFRee");
         if (task.equals("term")) {
-            System.err.println("QueryID\t" + "word\t" + "ictfs" + "\t" + "idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t" + "DF\t" + "TF\t" + "sccq\t" + "DocLenAcc\t");
+            System.err.println("QueryID\t" + "word\t" + "ictfs" + "\t" + "idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t" + "DF\t" + "TF\t" + "sccq\t" + "DocLenAcc\t" + "advance"
+                   + "\tBM25"+"\tDLM"+"\tLGD"+"\tPL2"+"\tDFIC"+"\tDPH"+"\tDLH13"+"\tDFRee");
         }
         for (InfoNeed need : querySelector.allQueries) {
 
@@ -131,9 +138,19 @@ public final class FeatureTool extends CmdLineTool {
             double[] scqs = new double[analyzedTokens.size()];
             double[] commonalities = new double[analyzedTokens.size()];
             double[] sccqs = new double[analyzedTokens.size()];
-            double[] TFs = new double[analyzedTokens.size()];
-            double[] DFs = new double[analyzedTokens.size()];
+            long[] TFs = new long[analyzedTokens.size()];
+            long[] DFs = new long[analyzedTokens.size()];
             long[] DocLenAccs = new long[analyzedTokens.size()];
+            double[] advs = new double[analyzedTokens.size()];
+
+            double[] BM25s = new double[analyzedTokens.size()];
+            double[] DLMs = new double[analyzedTokens.size()];
+            double[] LGDs = new double[analyzedTokens.size()];
+            double[] PL2s = new double[analyzedTokens.size()];
+            double[] DPHs = new double[analyzedTokens.size()];
+            double[] DFRees = new double[analyzedTokens.size()];
+            double[] DLH13s = new double[analyzedTokens.size()];
+            double[] DFICs = new double[analyzedTokens.size()];
 
             for (int c = 0; c < analyzedTokens.size(); c++) {
                 String word = analyzedTokens.get(c);
@@ -142,7 +159,7 @@ public final class FeatureTool extends CmdLineTool {
 
                 idfs[c] = idf.value(word);
                 DFs[c] = com.df(word);
-                DocLenAccs[c] = com.getdocLenAcc(); //I should be called after com.df()
+                DocLenAccs[c] = com.getdocLenAcc(); //It should be called after com.df()
                 ictfs[c] = ictf.value(word);
                 TFs[c] = com.TF(word);
                 ctis[c] = cti.value(word);
@@ -151,10 +168,21 @@ public final class FeatureTool extends CmdLineTool {
                 scqs[c] = scq.value(word);
                 commonalities[c] = com.value(word);
                 sccqs[c] = sccq.value(word);
+                advs[c] = adv.valueCom(word,DFs[c],TFs[c]);
+
+                BM25s[c]  = generalizedTW.valueCom(ParamTool.string2model("BM25k1.2b0.75"),DFs[c],TFs[c],DocLenAccs[c]);
+                DLMs[c]  = generalizedTW.valueCom(ParamTool.string2model("DirichletLMc2500.0"),DFs[c],TFs[c],DocLenAccs[c]);
+                LGDs[c]  = generalizedTW.valueCom(ParamTool.string2model("LGDc1.0"),DFs[c],TFs[c],DocLenAccs[c]);
+                PL2s[c]  = generalizedTW.valueCom(ParamTool.string2model("PL2c1.0"),DFs[c],TFs[c],DocLenAccs[c]);
+                DFICs[c]  = generalizedTW.valueCom(new DFIC(),DFs[c],TFs[c],DocLenAccs[c]);
+                DPHs[c]  = generalizedTW.valueCom(new DPH(),DFs[c],TFs[c],DocLenAccs[c]);
+                DLH13s[c]  = generalizedTW.valueCom(new DLH13(),DFs[c],TFs[c],DocLenAccs[c]);
+                DFRees[c]  = generalizedTW.valueCom(new DFRee(),DFs[c],TFs[c],DocLenAccs[c]);
 
                 if (task.equals("term")){
                     System.err.println(need.id() + "\t"+ word +"\t"+ ictfs[c] + "\t" + idfs[c] + "\t" + ctis[c] + "\t" + skew[c] + "\t" + kurt[c] + "\t" + scqs[c] + "\t" + commonalities[c] + "\t"
-                            + DFs[c] + "\t"+ TFs[c] + "\t"+ sccqs[c]+"\t"+DocLenAccs[c]+"\t");
+                            + DFs[c] + "\t"+ TFs[c] + "\t"+ sccqs[c]+"\t"+DocLenAccs[c]+"\t"+advs[c]+"\t"+
+                            BM25s[c] + "\t"+ DLMs[c]  + "\t"+ LGDs[c]  + "\t"+ PL2s[c] + "\t"+  DFICs[c]  + "\t"+ DPHs[c]  + "\t"+ DLH13s[c]  + "\t"+ DFRees[c]);
                     }
             }
             System.out.print("qid:" + need.id() + "\t" + need.wordCount() + "\t" + idf.aggregated(need, new Aggregate.Gamma1()) + "\t" + scope.value(need) + "\t");
@@ -166,7 +194,17 @@ public final class FeatureTool extends CmdLineTool {
             System.out.print(StatUtils.mean(scqs) + "\t" + StatUtils.variance(scqs) + "\t");
             System.out.print(StatUtils.mean(commonalities) + "\t" + StatUtils.variance(commonalities) + "\t");
             System.out.print(sccs.value(need) + "\t");
-            System.out.println(StatUtils.mean(sccqs) + "\t" + StatUtils.variance(sccqs));
+            System.out.print(StatUtils.mean(sccqs) + "\t" + StatUtils.variance(sccqs) + "\t");
+            System.out.print(StatUtils.mean(advs) + "\t");
+            System.out.print(StatUtils.sum(BM25s) + "\t");
+            System.out.print(StatUtils.sum(DLMs) + "\t");
+            System.out.print(StatUtils.sum(LGDs) + "\t");
+            System.out.print(StatUtils.sum(PL2s) + "\t");
+            System.out.print(StatUtils.sum(DFICs) + "\t");
+            System.out.print(StatUtils.sum(DPHs) + "\t");
+            System.out.print(StatUtils.sum(DLH13s) + "\t");
+            System.out.println(StatUtils.sum(DFRees) + "\t");
+
             System.gc();
 
         }
