@@ -22,7 +22,7 @@ import static org.apache.lucene.search.similarities.ModelBase.log2;
 public class PMI extends Base {
 
     private final QueryParser queryParser;
-
+    private Double maxPMI;
     public PMI(Path indexPath, String field) throws IOException {
         super(indexPath, field);
         queryParser = new QueryParser(field, analyzer);
@@ -89,7 +89,7 @@ public class PMI extends Base {
 
         double pmi = 0.0;
         int counter = 0;
-
+        maxPMI = 0.0;
         String[] distinctTerms = need.distinctSet.toArray(new String[0]);
 
         if (distinctTerms.length == 1) {
@@ -108,13 +108,25 @@ public class PMI extends Base {
                     //TODO do something when there is no intersection since logarithm of zero is not defined.
                     // at the time of being use +1 trick
                 }
-
-                pmi += pmi(m1, m2);
+                double tmp = pmi(m1, m2);
+                pmi += tmp;
                 counter++;
 
+                if(tmp>maxPMI) maxPMI=tmp;
             }
         }
         return pmi / counter;
+    }
+
+    public double maxPMIValue(InfoNeed need) throws IOException, ParseException{
+        if(maxPMI==null) {
+            value(need);
+        }
+        return getMaxPMI();
+    }
+
+    private double getMaxPMI(){
+        return maxPMI;
     }
 }
 
