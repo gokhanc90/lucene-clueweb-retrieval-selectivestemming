@@ -112,12 +112,12 @@ public final class FeatureTool extends CmdLineTool {
 
         // Print header
 
-        System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tMaxPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tMaxIDF\tVarIDF\tMeanCTI\tVarCTI\tMaxCTI" +
+        System.out.println("QueryID\tWordCount\tGamma\tOmega\tAvgPMI\tMaxPMI\tSCS\tMeanICTF\tVarICTF\tMeanIDF\tVarIDF\tMaxIDF\tMeanCTI\tVarCTI\tMaxCTI" +
                 "\tMeanSkew\tVarSkew\tMeanKurt\tVarKurt\tMeanSCQ\tVarSCQ\tMaxSCQ\tSumSCQ\tMeanCommonality\tVarCommonality\tSCCS\tMeanSCCQ\tVarSCCQ" +
                 "\tMeanAdvance\tMaxAdvance\tVarAdvance\tMeanAdvanceTF\tMaxAdvanceTF\tVarAdvanceTF\tMeanAdvanceDF\tMaxAdvanceDF\tVarAdvanceDF" +
                 "\tBM25"+"\tDLM"+"\tLGD"+"\tPL2"+"\tDFIC"+"\tDPH"+"\tDLH13"+"\tDFRee"+"\tAvgQL");
         if ("term".equals(task)) {
-            System.err.println("QueryID\t" + "word\t" + "ictfs" + "\t" + "idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t" + "DF\t" + "TF\t" + "sccq\t" + "DocLenAcc\t" + "advance\t" + "advanceTF\t"+ "advanceDF"
+            System.err.println("QueryID\t" + "word\t" + "DFNoStem\t" + "TFNoStem\t" + "ictfs" + "\t" + "idfs" + "\t" + "ctis" + "\t" + "skew" + "\t" + "kurt" + "\t" + "scqs" + "\t" + "commonalities" + "\t" + "DF\t" + "TF\t" + "idfStem\t" +  "sccq\t" + "DocLenAcc\t" + "advance\t" + "advanceTF\t"+ "advanceDF"
                    + "\tBM25"+"\tDLM"+"\tLGD"+"\tPL2"+"\tDFIC"+"\tDPH"+"\tDLH13"+"\tDFRee"+"\tQL");
         }
         for (InfoNeed need : querySelector.allQueries) {
@@ -139,12 +139,16 @@ public final class FeatureTool extends CmdLineTool {
             double[] scqs = new double[analyzedTokens.size()];
             double[] commonalities = new double[analyzedTokens.size()];
             double[] sccqs = new double[analyzedTokens.size()];
+            long[] TFNoStems = new long[analyzedTokens.size()];
+            long[] DFNoStems = new long[analyzedTokens.size()];
+
             long[] TFs = new long[analyzedTokens.size()];
             long[] DFs = new long[analyzedTokens.size()];
             long[] DocLenAccs = new long[analyzedTokens.size()];
             double[] advs = new double[analyzedTokens.size()];
             double[] advTFs = new double[analyzedTokens.size()];
             double[] advDFs = new double[analyzedTokens.size()];
+            double[] idfStems = new double[analyzedTokens.size()];
 
             double[] BM25s = new double[analyzedTokens.size()];
             double[] DLMs = new double[analyzedTokens.size()];
@@ -162,11 +166,14 @@ public final class FeatureTool extends CmdLineTool {
                 String freqLine = map.get(word);
                 DescriptiveStatistics descriptiveStatistics = querySelector.toDescriptiveStatistics(freqLine);
 
+                DFNoStems[c] = idf.df("contents",word);
+                TFNoStems[c] = idf.ctf("contents", word);
+
                 idfs[c] = idf.value(word);
+                TFs[c] = com.TF(word);
                 DFs[c] = com.df(word);
                 DocLenAccs[c] = com.getdocLenAcc(); //It should be called after com.df()
                 ictfs[c] = ictf.value(word);
-                TFs[c] = com.TF(word);
                 ctis[c] = cti.value(word);
                 skew[c] = descriptiveStatistics.getSkewness();
                 kurt[c] = descriptiveStatistics.getKurtosis();
@@ -176,6 +183,7 @@ public final class FeatureTool extends CmdLineTool {
                 advs[c] = adv.valueCom(word,DFs[c],TFs[c]);
                 advTFs[c] = adv.valueComTF(word,TFs[c]);
                 advDFs[c] = adv.valueComDF(word,DFs[c]);
+                idfStems[c] = idf.value(DFs[c]);
 
                 BM25s[c]  = generalizedTW.valueCom(ParamTool.string2model("BM25k1.2b0.75"),DFs[c],TFs[c],DocLenAccs[c]);
                 DLMs[c]  = generalizedTW.valueCom(ParamTool.string2model("DirichletLMc2500.0"),DFs[c],TFs[c],DocLenAccs[c]);
@@ -190,8 +198,8 @@ public final class FeatureTool extends CmdLineTool {
 
                 if ("term".equals(task)
                 ){
-                    System.err.println(need.id() + "\t"+ word +"\t"+ ictfs[c] + "\t" + idfs[c] + "\t" + ctis[c] + "\t" + skew[c] + "\t" + kurt[c] + "\t" + scqs[c] + "\t" + commonalities[c] + "\t"
-                            + DFs[c] + "\t"+ TFs[c] + "\t"+ sccqs[c]+"\t"+DocLenAccs[c]+"\t"+advs[c]+"\t"+advTFs[c]+"\t"+advDFs[c]+"\t"+
+                    System.err.println(need.id() + "\t"+ word +"\t"+ DFNoStems[c] +"\t"+  TFNoStems[c] +"\t"+  ictfs[c] + "\t" + idfs[c] + "\t" + ctis[c] + "\t" + skew[c] + "\t" + kurt[c] + "\t" + scqs[c] + "\t" + commonalities[c] + "\t"
+                            + DFs[c] + "\t"+ TFs[c] + "\t"+ idfStems[c] +"\t"+ "\t"+ sccqs[c]+"\t"+DocLenAccs[c]+"\t"+advs[c]+"\t"+advTFs[c]+"\t"+advDFs[c]+"\t"+
                             BM25s[c] + "\t"+ DLMs[c]  + "\t"+ LGDs[c]  + "\t"+ PL2s[c] + "\t"+  DFICs[c]  + "\t"+ DPHs[c]  + "\t"+ DLH13s[c]  + "\t"+ DFRees[c] + "\t"+ QLs[c]);
                     }
             }

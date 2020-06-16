@@ -277,6 +277,7 @@ public class AdHocExpTool extends CmdLineTool {
 
                 for (int i = 0; i < tagsArr.length; i++) {
                     String tag = tagsArr[i];
+                    System.out.println(dataset+" "+tag+" "+measure+" "+models+" "+evalDirectory+" "+op);
                     final Evaluator evaluator = new Evaluator(dataset, tag, measure, models, evalDirectory, op);
                     evaluator.oracleMax();
                     evaluatorMap.put(Tag.tag(tag), evaluator);
