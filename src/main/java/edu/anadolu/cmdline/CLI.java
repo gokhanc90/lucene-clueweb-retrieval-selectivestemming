@@ -5,6 +5,7 @@ import edu.anadolu.field.FieldTool;
 import edu.anadolu.field.SelectiveStemmingTool;
 import edu.anadolu.knn.*;
 import edu.anadolu.ltr.SEOTool;
+import edu.anadolu.nlp.POSTaggerTool;
 import org.apache.lucene.util.Version;
 import org.clueweb09.WarcTool;
 
@@ -155,6 +156,8 @@ public final class CLI {
         tools.add(new CustomSynonymTool());
 
         tools.add(new CorpusBasedStemmingTool());
+
+        tools.add(new POSTaggerTool());
 
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);
