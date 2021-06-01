@@ -33,6 +33,12 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiFields;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Bits;
 import org.clueweb09.ClueWeb12WarcRecord;
 import org.clueweb09.InfoNeed;
 import org.jsoup.Jsoup;
@@ -51,15 +57,13 @@ import javax.cache.expiry.Duration;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import static edu.anadolu.Indexer.BUFFER_SIZE;
@@ -568,6 +572,67 @@ public class Test {
     }
 
     @org.junit.Test
+    public void testCatB() throws IOException {
+        int k = 2;
+        TreeSet<String> ids = new TreeSet<>();
+        DataSet dataset = CollectionFactory.dataset(Collection.WSJ, "/home/ubuntu/Desktop/TFD_HOME");
+        for (final Path path : discoverIndexes(dataset)) {
+
+            final String tag = path.getFileName().toString();
+
+            // search for a specific tag, skip the rest
+            if (!tag.equals(Tag.NoStem.toString())) continue;
+
+            IndexReader reader = DirectoryReader.open(FSDirectory.open(path));
+            Bits liveDocs = MultiFields.getLiveDocs(reader);
+            for (int i=0; i<reader.maxDoc(); i++) {
+                if (liveDocs != null && !liveDocs.get(i))
+                    continue;
+
+                org.apache.lucene.document.Document doc = reader.document(i);
+                ids.add(doc.get(Indexer.FIELD_ID));
+            }
+
+            System.out.println("MaxDoc: "+reader.maxDoc() + " retrieved Id count: "+ids.size());
+            reader.close();
+        }
+
+        List<String> lines = Files.readAllLines(Paths.get("/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt"));
+        lines.add("51 0 WSJX861222-0012 0");
+        List<String> newLines = lines.stream().filter(
+                l->ids.contains(l.split("\\s+")[k].trim()))
+                .collect(Collectors.toList());
+
+
+        System.out.println(Paths.get("/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt").getFileName());
+        System.out.println(Paths.get("/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt").getParent());
+        Files.write(Paths.get(Paths.get("/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt").getParent().toString(),
+                Paths.get("/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt").getFileName().toString()+".catB"),newLines);
+
+        System.out.println(lines.size() +" "+ newLines.size());
+
+    }
+    private List<Path> discoverIndexes(DataSet dataSet) {
+        Path indexesPath = dataSet.indexesPath();
+        List<Path> pathList = new ArrayList<>();
+
+        if (!Files.exists(indexesPath) || !Files.isDirectory(indexesPath) || !Files.isReadable(indexesPath)) {
+            throw new IllegalArgumentException(indexesPath + " does not exist or is not a directory.");
+        }
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(indexesPath, Files::isDirectory)) {
+            for (Path path : stream) {
+                // Iterate over the paths in the directory
+                pathList.add(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return pathList;
+    }
+
+        @org.junit.Test
     public void testAnalyzer() throws IOException {
         Analyzer analyzer = Analyzers.analyzer(Tag.SynonymSnowballEng,Paths.get("D:\\TFD_HOME\\MQ09"));
         try (TokenStream ts = analyzer.tokenStream("contents", new StringReader("wedding budget calculator"))) {

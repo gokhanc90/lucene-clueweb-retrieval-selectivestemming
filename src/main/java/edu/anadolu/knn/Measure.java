@@ -6,11 +6,12 @@ import edu.anadolu.eval.Metric;
  * Retrieval Effectiveness Measures that we optimize and report
  */
 public enum Measure {
-
+    NDCG10(Metric.NDCG, 10),
     NDCG20(Metric.NDCG, 20),
     NDCG100(Metric.NDCG, 100),
     NDCG1000(Metric.NDCG, 1000),
 
+    ERR10(Metric.ERR, 10),
     ERR20(Metric.ERR, 20),
     ERR100(Metric.ERR, 100),
 //    ERR1000(Metric.ERR, 1000),

@@ -25,8 +25,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.DataSet;
+import edu.anadolu.qpp.Commonality;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
@@ -44,18 +46,27 @@ public final class SynonymWeightedQuery extends Query {
     private final Term[] terms;
     private final Term orginal;
     private final Term[] otherOrj;
+    private final Tag tag;
+    private final DataSet dataset;
     private SynonymWeightFunctions functions;
-
+    Commonality com;
     /**
      * Creates a new SynonymQuery, matching any of the supplied terms.
      * <p>
      * The terms must all have the same field.
      */
-    public SynonymWeightedQuery(SynonymWeightFunctions functions,DataSet dataset, Term[] otherOrj, Tag tag, Term original, Term... terms) {
+    public SynonymWeightedQuery(SynonymWeightFunctions functions,DataSet dataset, Term[] otherOrj, Tag tag, Term original, Commonality com, Term... terms) {
         this.terms = Objects.requireNonNull(terms).clone();
         this.orginal = original;
         this.otherOrj=otherOrj;
         this.functions=functions;
+        this.tag = tag;
+        this.dataset = dataset;
+        this.com = com;
+
+        if (tag.toString().contains("SynonymKStem")) com.setAnalyzer(Analyzers.analyzer(Tag.SynonymKStem, dataset.collectionPath()));
+        else if(tag.toString().contains("SynonymKStem")) com.setAnalyzer(Analyzers.analyzer(Tag.SynonymSnowballEng,dataset.collectionPath()));
+
         // check that all terms are the same field
         String field = null;
         for (Term term : terms) {
@@ -145,7 +156,9 @@ public final class SynonymWeightedQuery extends Query {
             factors = new double[terms.length];
 
             for (int i = 0; i < termContexts.length; i++) {
-                factors[i]=functions.QBSART(orginal,terms[i],otherOrj);
+                if (tag.toString().contains("QBS"))  factors[i]=functions.QBSART(orginal,terms[i],otherOrj);
+                else if ((tag.toString().contains("BERT"))) factors[i]=functions.BERTSim(orginal,terms[i]);
+                else throw new RuntimeException("Weighting function is not found!");
                 termContexts[i] = build(searcher.getTopReaderContext(), terms[i],factors[i]);//PMI
                 TermStatistics termStats = searcher.termStatistics(terms[i], termContexts[i]);
                 docFreq = Math.max(termStats.docFreq(), docFreq);
@@ -155,6 +168,11 @@ public final class SynonymWeightedQuery extends Query {
                     totalTermFreq += termStats.totalTermFreq();
                 }
             }
+
+
+            docFreq = com.df(orginal.text());
+
+
             TermStatistics pseudoStats = new TermStatistics(null, docFreq, totalTermFreq);
             this.similarity = searcher.getSimilarity(true);
             this.simWeight = similarity.computeWeight(boost, collectionStats, pseudoStats);

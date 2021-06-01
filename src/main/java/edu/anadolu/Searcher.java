@@ -3,6 +3,7 @@ package edu.anadolu;
 import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.DataSet;
+import edu.anadolu.qpp.Commonality;
 import edu.anadolu.similarities.MATF;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -124,6 +125,7 @@ public class Searcher implements Closeable {
         if(analyzerTag.toString().contains("SynonymHPS")) this.analyzerTag=Tag.SynonymHPS;
         if(analyzerTag.toString().contains("SynonymGupta19")) this.analyzerTag=Tag.SynonymGupta19;
         if(analyzerTag.toString().contains("QBS")) this.weightedFunc="QBS";
+        if(analyzerTag.toString().contains("BERT")) this.weightedFunc="BERT";
 
         this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
         this.synonymPath=synonymPath;
@@ -212,14 +214,23 @@ public class Searcher implements Closeable {
         queryParser.setDefaultOperator(operator);
 
         SynonymWeightFunctions func=null;
-        if("QBS".equals(weightedFunc)) func=new SynonymWeightFunctions(dataSet,Tag.NoStem);
+        Commonality com=null;
+        if("QBS".equals(weightedFunc) || "BERT".equals(weightedFunc)){
+            func=new SynonymWeightFunctions(dataSet,Tag.NoStem,runningTag);
+            try {
+                com = new Commonality(dataSet.indexesPath().resolve(Tag.NoStem.toString()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
 
         for (InfoNeed need : track.getTopics()) {
 
             String queryString = need.query();
             Query query;
-            if("QBS".equals(weightedFunc)) {
-
+            if("QBS".equals(weightedFunc) || "BERT".equals(weightedFunc)) {
+                System.out.println(need.query());
                 Map<Integer, List<String>> syn = Analyzers.getAnalyzedTokensWithSynonym(queryString, Analyzers.analyzer(analyzerTag, synonymPath));
                 List<String> orj = Analyzers.getAnalyzedTokens(queryString, Analyzers.analyzer(Tag.NoStem));
                 Map<Integer, List<Term>> ts = new LinkedHashMap<>();
@@ -235,7 +246,7 @@ public class Searcher implements Closeable {
                     String orjinalTerm = orj.remove(j);
                     Term[] otherOrj = orj.stream().map(o -> new Term(field, o)).collect(Collectors.toList()).toArray(new Term[0]);
                     Term[] variants = e.getValue().toArray(new Term[0]);
-                    BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(func,dataSet, otherOrj, Tag.NoStem, new Term(field, orjinalTerm), variants), BooleanClause.Occur.SHOULD);
+                    BooleanClause bc = new BooleanClause(new SynonymWeightedQuery(func,dataSet, otherOrj, runningTag, new Term(field, orjinalTerm), com,variants), BooleanClause.Occur.SHOULD);
                     orj.add(j, orjinalTerm);
                     j++;
                     builder.add(bc);
