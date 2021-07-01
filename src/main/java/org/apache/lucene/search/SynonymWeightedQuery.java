@@ -65,7 +65,7 @@ public final class SynonymWeightedQuery extends Query {
         this.com = com;
 
         if (tag.toString().contains("SynonymKStem")) com.setAnalyzer(Analyzers.analyzer(Tag.SynonymKStem, dataset.collectionPath()));
-        else if(tag.toString().contains("SynonymKStem")) com.setAnalyzer(Analyzers.analyzer(Tag.SynonymSnowballEng,dataset.collectionPath()));
+        else if(tag.toString().contains("SynonymSnowballEng")) com.setAnalyzer(Analyzers.analyzer(Tag.SynonymSnowballEng,dataset.collectionPath()));
 
         // check that all terms are the same field
         String field = null;
