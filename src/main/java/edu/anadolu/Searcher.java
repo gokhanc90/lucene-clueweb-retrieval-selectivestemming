@@ -5,6 +5,7 @@ import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.DataSet;
 import edu.anadolu.qpp.Commonality;
 import edu.anadolu.similarities.MATF;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -48,6 +49,8 @@ public class Searcher implements Closeable {
 
     private  Path synonymPath;
 
+    private String runsPath=null;
+
     private final class SearcherThread extends Thread {
 
         private final QueryParser.Operator operator;
@@ -68,7 +71,15 @@ public class Searcher implements Closeable {
         @Override
         public void run() {
             try {
-                if(synonymPath!=null) search(track, similarity, operator, field, path,synonymPath);
+                if(synonymPath!=null) {
+                    if ("synonym_param".equals(runsPath)) {
+                        QueryParser queryParser = new QueryParser(field, Analyzers.analyzer(synonymPath));
+                        queryParser.setDefaultOperator(operator);
+
+                        search(track, similarity, queryParser, path);
+                    }
+                    else search(track, similarity, operator, field, path,synonymPath);
+                }
                 else search(track, similarity, operator, field, path);
             } catch (Exception e) {
                 System.out.println(Thread.currentThread().getName() + ": unexpected exception : " + e.getMessage());
@@ -142,6 +153,11 @@ public class Searcher implements Closeable {
         return similarity.toString().replaceAll(" ", "_") + "_" + field + "_" + analyzerTag + "_" + operator.toString() + "_" + p;
     }
 
+    public String toString(Similarity similarity, QueryParser.Operator operator, String field, int part, String tag) {
+        String p = part == 0 ? "all" : Integer.toString(part);
+        return similarity.toString().replaceAll(" ", "_") + "_" + field + "_" + tag + "_" + operator.toString() + "_" + p;
+    }
+
     public String toString(Similarity similarity, QueryParser.Operator operator, String field, int part) {
         String p = part == 0 ? "all" : Integer.toString(part);
         return similarity.toString().replaceAll(" ", "_") + "_" + field + "_" + indexTag + "_" + operator.toString() + "_" + p;
@@ -158,7 +174,7 @@ public class Searcher implements Closeable {
     }
 
     public void searchWithThreads(int numThreads, Collection<ModelBase> models, Collection<String> fields, String runsPath) throws InterruptedException, IOException {
-
+        this.runsPath = runsPath;
         System.out.println("There are " + models.size() * fields.size() * dataSet.tracks().length + " many tasks to process...");
 
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numThreads);
@@ -309,7 +325,75 @@ public class Searcher implements Closeable {
             func.idf.close();
         }
     }
+    public void search(Track track, Similarity similarity,  QueryParser queryParser, Path path) throws IOException, ParseException {
 
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setSimilarity(similarity);
+
+        final String runTag = toString(similarity, queryParser.getDefaultOperator(), queryParser.getField(), 0, FilenameUtils.removeExtension(synonymPath.getFileName().toString()));
+
+        PrintWriter out = new PrintWriter(Files.newBufferedWriter(path.resolve(runTag+".txt"), StandardCharsets.US_ASCII));
+
+
+   //     QueryParser queryParser = new QueryParser(field, Analyzers.analyzer(analyzerTag,synonymPath));
+   //     queryParser.setDefaultOperator(operator);
+
+
+        for (InfoNeed need : track.getTopics()) {
+
+            String queryString = need.query();
+            Query query = queryParser.parse(queryString);
+
+            ScoreDoc[] hits = searcher.search(query, numHits).scoreDocs;
+
+            /**
+             * If you are returning zero documents for a query, instead return the single document
+             * clueweb09-en0000-00-00000
+             * clueweb12-0000wb-00-00000
+             * GX000-00-0000000
+             * If you are returning zero documents for a query, instead return the single document "clueweb09-en0000-00-00000".
+             * If you would normally return no documents for a query, instead return the single document "clueweb09-en0000-00-00000" at rank one.
+             * Doing so maintains consistent evaluation results (averages over the same number of queries) and does not break anyone's tools.
+             */
+            if (hits.length == 0) {
+
+                out.print(need.id());
+                out.print("\tQ0\t");
+                out.print(dataSet.getNoDocumentsID());
+                out.print("\t1\t0\t");
+                out.print(runTag);
+                out.println();
+                continue;
+            }
+
+            /**
+             * the first column is the topic number.
+             * the second column is currently unused and should always be "Q0".
+             * the third column is the official document identifier of the retrieved document.
+             * the fourth column is the rank the document is retrieved.
+             * the fifth column shows the score (integer or floating point) that generated the ranking.
+             * the sixth column is called the "run tag" and should be a unique identifier for your
+             */
+            for (int i = 0; i < hits.length; i++) {
+                int docId = hits[i].doc;
+                Document doc = searcher.doc(docId);
+                out.print(need.id());
+                out.print("\tQ0\t");
+                out.print(doc.get(FIELD_ID));
+                out.print("\t");
+                out.print(i + 1);
+                out.print("\t");
+                out.print(hits[i].score);
+                out.print("\t");
+                out.print(runTag);
+                out.println();
+                out.flush();
+            }
+        }
+
+        out.close();
+
+    }
     public void search(Track track, Similarity similarity, QueryParser.Operator operator, String field, Path path) throws IOException, ParseException {
 
         IndexSearcher searcher = new IndexSearcher(reader);

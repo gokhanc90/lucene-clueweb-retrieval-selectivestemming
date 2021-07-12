@@ -159,6 +159,8 @@ public final class CLI {
 
         tools.add(new POSTaggerTool());
 
+        tools.add(new CatBProducerTool());
+
         for (CmdLineTool tool : tools) {
             toolLookupMap.put(tool.getName(), tool);
         }

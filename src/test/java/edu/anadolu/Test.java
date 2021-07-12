@@ -697,16 +697,21 @@ public class Test {
 
         @org.junit.Test
     public void CLITest() throws Exception {
-     //   String[] args ={"TFDistribution","-collection","MC","-task","term"};
+//        String[] args ={"TFDistribution","-collection","WSJ"};
+ //       String[] args ={"Doclen","-collection","WSJ"};
       //  String[] args = {"SelectiveStemming", "-collection", "MC", "-tags", "NoStemTurkish_Zemberek", "-metric","NDCG20", "-spam", "0", "-selection", "MSTDF", "-binDF","10"};
-        //String[] args ={"Stats","-collection","MQ07","-task","queryLength"};
+      //  String[] args ={"Stats","-collection","WSJ"};
         //String[] args ={"AdHocExp","-collection","MQ09", "-tag","SnowballEng","-task","resultSet", "-models", "BM25k1.3b0.5_PL2c4.0_LGDc2.0_DirichletLMc500.0_DPH_DFIC_DFRee_DLH13"};
      //   String[] args ={"AdHocExp","-collection","MQ08", "-tag","HPS","-task","commonalityFast"};
      //  String[] args ={"SystemEvaluator","-collection","GOV2","-metric","MAP","-models","BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_LGD_DFRee_DLH13","-tags","NoStem_SynonymSnowballEng_SynonymKStem"};
      //   String[] args ={"Indexer","-collection","WSJ","-tag","NoStem"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
-        //String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymHPS"};
-        String[] args ={"CorpusBasedStemming","-collection","GOV2","-task","CBSGupta19","-maxPair","71108","-avgTL","6.0"};
+       //   String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymHPS"};
+          String[] args ={"CustomSynonym","-collection","WSJ","-task","synonym_param","-tag","SynonymKStem"};
+     //   String[] args ={"CorpusBasedStemming","-collection","GOV2","-task","CBSGupta19","-maxPair","71108","-avgTL","6.0"};
+     //       String[] args ={"CatBProducer","-collection","WSJ","-DocNameIndex","2","-files","/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt", "/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.101-150-removed.txt"};
+       //     String[] args ={"AdHocExp","-collection","CW12B","-catB","-task","printSystemTopic","-models","BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_LGD_DFRee_DLH13","-tags","NoStem_SynonymSnowballEng_SynonymKStem_SynonymSnowballEngQBS_SynonymKStemQBS_SynonymHPS_SynonymGupta19"};
+        ////    String[] args ={"AdHocExp","-collection","WSJ","-task","npmi","-tag","SynonymSnowballEng"};
       //    String[] args ={"Custom","-collection","WSJ","-task","search","-tag","NoStem"};
   //      String[] args ={"Feature","-collection","MQ09","-tag","SynonymKStem"};
         //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};

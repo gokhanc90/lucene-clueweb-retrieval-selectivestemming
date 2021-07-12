@@ -11,6 +11,7 @@ import edu.anadolu.similarities.DPH;
 import org.apache.lucene.search.similarities.ModelBase;
 import org.kohsuke.args4j.Option;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -95,6 +96,46 @@ public class CustomSynonymTool extends CmdLineTool {
                 }
             }
             System.out.println("Search completed in " + execution(start));
+            return;
+        }
+
+        if ("synonym_param".equals(task)) {
+
+            List<Path> synonymFiles = Files.list(dataset.collectionPath()).filter(f->f.getFileName().toString().startsWith(this.tag+"_alpha")).collect(Collectors.toList());
+
+
+            final long start = System.nanoTime();
+
+            final Set<ModelBase> modelBaseSet = Arrays.stream(models.split("_"))
+                    .map(ParamTool::string2model)
+                    .collect(Collectors.toSet());
+
+            modelBaseSet.add(new DFIC());
+            modelBaseSet.add(new DPH());
+            modelBaseSet.add(new DLH13());
+            modelBaseSet.add(new DFRee());
+
+            if (!props.containsKey(collection.toString() + ".fields"))
+                throw new RuntimeException("cannot find " + collection.toString() + ".fields property!");
+
+            final String[] fieldsArr = props.getProperty(collection.toString() + ".fields").split(",");
+
+            List<String> fields = Arrays.asList(fieldsArr);
+            for (final Path path : discoverIndexes(dataset)) {
+
+                final String tag = path.getFileName().toString();
+
+                // search for a specific tag, skip the rest
+                if (!tag.equals(Tag.NoStem.toString())) continue;
+
+                for(Path synonymFile : synonymFiles) {
+                    try (Searcher searcher = new Searcher(path, dataset, Tag.tag(this.tag), synonymFile, 1000)) {
+                        searcher.searchWithThreads(numThreads, modelBaseSet, /*Collections.singletonList("contents")*/ fields, "synonym_param");
+                    }
+                }
+            }
+            System.out.println("Search completed in " + execution(start));
+
             return;
         }
 

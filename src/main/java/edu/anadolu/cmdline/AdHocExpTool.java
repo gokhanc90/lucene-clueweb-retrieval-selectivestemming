@@ -10,6 +10,7 @@ import edu.anadolu.datasets.DataSet;
 import edu.anadolu.eval.Evaluator;
 import edu.anadolu.eval.SystemEvaluator;
 import edu.anadolu.knn.Measure;
+import edu.anadolu.qpp.PMI;
 import edu.anadolu.similarities.DFIC;
 import edu.anadolu.similarities.DFRee;
 import edu.anadolu.similarities.DLH13;
@@ -25,6 +26,7 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.similarities.ModelBase;
 import org.apache.lucene.search.similarities.Similarity;
@@ -72,6 +74,8 @@ public class AdHocExpTool extends CmdLineTool {
 
     //  @Option(name = "-spam", required = false, usage = "manuel spam threshold", metaVar = "10 20 30 .. 90")
     // private int spam = 0;
+    @Option(name = "-catB", required = false, usage = "use catB qrels for CW12B and CW09B")
+    private boolean catB = false;
 
 
     @Option(name = "-task",  metaVar = "[commonality|resultSet]", required = false,
@@ -106,6 +110,33 @@ public class AdHocExpTool extends CmdLineTool {
         }
 
         DataSet dataset = CollectionFactory.dataset(collection, tfd_home);
+
+        if("npmi".equals(task)){
+            Path synonymPath=dataset.collectionPath();
+            PMI pmi = new PMI(dataset.indexesPath().resolve(Tag.NoStem.toString()), "contents");
+            QuerySelector querySelector = new QuerySelector(dataset, Tag.NoStem.toString());
+            for (InfoNeed need : querySelector.allQueries) {
+
+                String queryString = need.query();
+                Map<Integer, List<String>> syn = Analyzers.getAnalyzedTokensWithSynonym(queryString, Analyzers.analyzer(Tag.tag(tag), synonymPath));
+                List<String> orj = Analyzers.getAnalyzedTokens(queryString, Analyzers.analyzer(Tag.NoStem));
+
+                int j = 0;
+                for (Map.Entry<Integer, List<String>> e : syn.entrySet()) {
+                    String orjinalTerm = orj.get(j++);
+                    List<String> variants = e.getValue();
+                    for(int k=0; k<variants.size(); k++){
+                        String m = variants.get(k);
+                        if(m.equals(orjinalTerm)) continue;
+                        double npmi = pmi.npmi(orjinalTerm,m);
+                        System.out.println(need.id()+"\t"+orjinalTerm+"\t"+m+"\t"+npmi);
+                    }
+
+                }
+
+
+            }
+        }
 
         if ("HPSTrain".equals(task)) {
             Path indexP=null;
@@ -211,6 +242,8 @@ public class AdHocExpTool extends CmdLineTool {
             for(Measure measure : measures) {
                 String op = "OR";
                 String evalDirectory = "evals";
+                if (catB && (Collection.CW09B.equals(collection) || Collection.CW12B.equals(collection)))
+                    evalDirectory = "catb_evals";
                 System.out.println(measure);
                 final String[] tagsArr = tags.split("_");
                 Set<String> modelIntersection = new HashSet<>();

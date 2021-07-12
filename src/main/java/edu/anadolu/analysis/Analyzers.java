@@ -127,12 +127,29 @@ public class Analyzers {
         }
     }
 
+    public static Analyzer analyzer(Path synonymPath) {
+        try {
+            return anlyzr(synonymPath);
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
     private static Analyzer anlyzr(Tag tag,Path synonymPath) throws IOException {
 
         return CustomAnalyzer.builder(synonymPath)
                 .withTokenizer("standard")
                 .addTokenFilter("lowercase")
                 .addTokenFilter(SynonymGraphFilterFactory.class, "format", "solr", "expand", "true", "synonyms", tag.toString() + ".txt")
+                .build();
+    }
+
+    private static Analyzer anlyzr(Path synonymPath) throws IOException {
+
+        return CustomAnalyzer.builder(synonymPath.getParent())
+                .withTokenizer("standard")
+                .addTokenFilter("lowercase")
+                .addTokenFilter(SynonymGraphFilterFactory.class, "format", "solr", "expand", "true", "synonyms", synonymPath.getFileName().toString())
                 .build();
     }
 
