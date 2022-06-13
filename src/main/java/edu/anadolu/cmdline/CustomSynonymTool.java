@@ -13,6 +13,7 @@ import org.kohsuke.args4j.Option;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -90,7 +91,7 @@ public class CustomSynonymTool extends CmdLineTool {
 
                 // search for a specific tag, skip the rest
                 if (!tag.equals(Tag.NoStem.toString())) continue;
-                Path synonymPath=dataset.collectionPath();
+                Path synonymPath= Paths.get(dataset.collectionPath().toString(),this.tag+".txt");
                 try (Searcher searcher = new Searcher(path, dataset, Tag.tag(this.tag),synonymPath,1000)) {
                     searcher.searchWithThreads(numThreads, modelBaseSet, /*Collections.singletonList("contents")*/ fields, "runs");
                 }
@@ -101,7 +102,7 @@ public class CustomSynonymTool extends CmdLineTool {
 
         if ("synonym_param".equals(task)) {
 
-            List<Path> synonymFiles = Files.list(dataset.collectionPath()).filter(f->f.getFileName().toString().startsWith(this.tag+"_alpha")).collect(Collectors.toList());
+            List<Path> synonymFiles = Files.list(dataset.collectionPath()).filter(f->f.getFileName().toString().startsWith(this.tag)).collect(Collectors.toList());
 
 
             final long start = System.nanoTime();
@@ -130,7 +131,7 @@ public class CustomSynonymTool extends CmdLineTool {
 
                 for(Path synonymFile : synonymFiles) {
                     try (Searcher searcher = new Searcher(path, dataset, Tag.tag(this.tag), synonymFile, 1000)) {
-                        searcher.searchWithThreads(numThreads, modelBaseSet, /*Collections.singletonList("contents")*/ fields, "synonym_param");
+                        searcher.searchWithThreads(numThreads, modelBaseSet, /*Collections.singletonList("contents")*/ fields, "synonym_param_runs");
                     }
                 }
             }

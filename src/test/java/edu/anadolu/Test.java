@@ -69,6 +69,7 @@ import java.util.zip.GZIPInputStream;
 import static edu.anadolu.Indexer.BUFFER_SIZE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
+import static org.junit.Assert.assertEquals;
 
 
 public class Test {
@@ -634,8 +635,8 @@ public class Test {
 
         @org.junit.Test
     public void testAnalyzer() throws IOException {
-        Analyzer analyzer = Analyzers.analyzer(Tag.SynonymSnowballEng,Paths.get("D:\\TFD_HOME\\MQ09"));
-        try (TokenStream ts = analyzer.tokenStream("contents", new StringReader("wedding budget calculator"))) {
+        Analyzer analyzer = Analyzers.analyzer(Paths.get("/media/ubuntu/DataPartition3/TFD_HOME/CW09B/SynonymKStem_bert-base-uncased_alpha0.7_threshold0.5.txt"));//analyzer(Tag.KStem);
+        try (TokenStream ts = analyzer.tokenStream("contents", new StringReader("preparatives"))) {
 
             final CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
             ts.reset(); // Resets this stream to the beginning. (Required)
@@ -697,23 +698,25 @@ public class Test {
 
         @org.junit.Test
     public void CLITest() throws Exception {
-//        String[] args ={"TFDistribution","-collection","WSJ"};
- //       String[] args ={"Doclen","-collection","WSJ"};
+//        String[] args ={"TFDistribution","-collection","NTCIR", "-task", "term"};
+//        String[] args ={"TFDistribution","-collection","NTCIR","-task","query"};
+//            String[] args ={"Stats","-collection","GOV2"};
+//        String[] args ={"Doclen","-collection","GOV2"};
       //  String[] args = {"SelectiveStemming", "-collection", "MC", "-tags", "NoStemTurkish_Zemberek", "-metric","NDCG20", "-spam", "0", "-selection", "MSTDF", "-binDF","10"};
-      //  String[] args ={"Stats","-collection","WSJ"};
         //String[] args ={"AdHocExp","-collection","MQ09", "-tag","SnowballEng","-task","resultSet", "-models", "BM25k1.3b0.5_PL2c4.0_LGDc2.0_DirichletLMc500.0_DPH_DFIC_DFRee_DLH13"};
-     //   String[] args ={"AdHocExp","-collection","MQ08", "-tag","HPS","-task","commonalityFast"};
+//        String[] args ={"AdHocExp","-collection","MQ09", "-tag","Lovins","-task","commonalityFast"};
+ //       String[] args ={"AdHocExp","-collection","WSJ", "-tag","SynonymKStem","-task","printRunTopicFromEvals"};
      //  String[] args ={"SystemEvaluator","-collection","GOV2","-metric","MAP","-models","BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_LGD_DFRee_DLH13","-tags","NoStem_SynonymSnowballEng_SynonymKStem"};
      //   String[] args ={"Indexer","-collection","WSJ","-tag","NoStem"};
      //   String[] args ={"Searcher","-collection","MC","-task","param"};
-       //   String[] args ={"CustomSynonym","-collection","GOV2","-task","search","-tag","SynonymHPS"};
-          String[] args ={"CustomSynonym","-collection","WSJ","-task","synonym_param","-tag","SynonymKStem"};
+      //    String[] args ={"CustomSynonym","-collection","WSJ","-task","search","-tag","SynonymLovins"};
+ //         String[] args ={"CustomSynonym","-collection","CW09B","-task","synonym_param","-tag","SynonymKStem"};
      //   String[] args ={"CorpusBasedStemming","-collection","GOV2","-task","CBSGupta19","-maxPair","71108","-avgTL","6.0"};
      //       String[] args ={"CatBProducer","-collection","WSJ","-DocNameIndex","2","-files","/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.51-100-removed.txt", "/home/ubuntu/Desktop/TFD_HOME/topics-and-qrels/qrels.101-150-removed.txt"};
-       //     String[] args ={"AdHocExp","-collection","CW12B","-catB","-task","printSystemTopic","-models","BM25k1.2b0.75_DirichletLMc2500.0_LGDc1.0_PL2c1.0_DPH_LGD_DFRee_DLH13","-tags","NoStem_SynonymSnowballEng_SynonymKStem_SynonymSnowballEngQBS_SynonymKStemQBS_SynonymHPS_SynonymGupta19"};
-        ////    String[] args ={"AdHocExp","-collection","WSJ","-task","npmi","-tag","SynonymSnowballEng"};
+     //       String[] args ={"AdHocExp","-collection","CW09B","-task","printSystemTopic","-tags","SynonymLovins"};
+//            String[] args ={"AdHocExp","-collection","CW12B","-task","npmi","-tag","SynonymSnowballEng"};
       //    String[] args ={"Custom","-collection","WSJ","-task","search","-tag","NoStem"};
-  //      String[] args ={"Feature","-collection","MQ09","-tag","SynonymKStem"};
+        String[] args ={"Feature","-collection","CW09B","-tag","SynonymLovins"};
         //String[] args ={"TFDistribution","-collection","MQ09","-task","query","-tag","SynonymKStem"};
     //    CollectionFactory.dataset(Collection.WSJ,"D:\\TFD_HOME");
         CLI.main(args);
@@ -748,6 +751,60 @@ public class Test {
 
         Analyzer a = Analyzers.analyzer(Tag.HPS);
         System.out.println(Analyzers.getAnalyzedTokens("written readings",a));
+    }
+
+    @org.junit.Test
+    public void testLovins() throws Exception {
+
+        Analyzer a = Analyzers.analyzer(Tag.Lovins);
+        System.out.println(Analyzers.getAnalyzedTokens("hello this test emergency 2008treated",a));
+    }
+
+    @org.junit.Test
+    public void testLancaster() throws Exception {
+        Analyzer a = Analyzers.analyzer(Tag.Lancaster);
+        String result = Analyzers.getAnalyzedToken("2008treated",a);
+        System.out.println(result);
+
+        System.out.println("stem");
+        String[] words = {"consign", "consigned", "consigning", "consignment",
+                "consist", "consisted", "consistency", "consistent", "consistently",
+                "consisting", "consists", "consolation", "consolations", "consolatory",
+                "console", "consoled", "consoles", "consolidate", "consolidated",
+                "consolidating", "consoling", "consolingly", "consols", "consonant",
+                "consort", "consorted", "consorting", "conspicuous", "conspicuously",
+                "conspiracy", "conspirator", "conspirators", "conspire", "conspired",
+                "conspiring", "constable", "constables", "constance", "constancy",
+                "constant", "knack", "knackeries", "knacks", "knag", "knave",
+                "knaves", "knavish", "kneaded", "kneading", "knee", "kneel",
+                "kneeled", "kneeling", "kneels", "knees", "knell", "knelt", "knew",
+                "knick", "knif", "knife", "knight", "knightly", "knights", "knit",
+                "knits", "knitted", "knitting", "knives", "knob", "knobs", "knock",
+                "knocked", "knocker", "knockers", "knocking", "knocks", "knopp",
+                "knot", "knots"
+        };
+
+        String[] expResult = {"consign", "consign", "consign", "consign",
+                "consist", "consist", "consist", "consist", "consist", "consist",
+                "consist", "consol", "consol", "consol", "consol", "consol",
+                "consol", "consolid", "consolid", "consolid", "consol", "consol",
+                "consol", "conson", "consort", "consort", "consort", "conspicu",
+                "conspicu", "conspir", "conspir", "conspir", "conspir", "conspir",
+                "conspir", "const", "const", "const", "const", "const", "knack",
+                "knackery", "knack", "knag", "knav", "knav", "knav", "knead",
+                "knead", "kne", "kneel", "kneel", "kneel", "kneel", "kne", "knel",
+                "knelt", "knew", "knick", "knif", "knif", "knight", "knight",
+                "knight", "knit", "knit", "knit", "knit", "kniv", "knob", "knob",
+                "knock", "knock", "knock", "knock", "knock", "knock", "knop",
+                "knot", "knot"
+        };
+
+        for (int i = 0; i < words.length; i++) {
+            result = Analyzers.getAnalyzedToken(words[i],a);
+            System.out.println(expResult[i] +"\t"+ result);
+            assertEquals(expResult[i], result);
+        }
+
     }
 
     @org.junit.Test

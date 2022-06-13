@@ -17,7 +17,10 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.analysis.tr.Zemberek3StemFilterFactory;
+import org.apache.lucene.anaysis.lancaster.LancasterFilterFactory;
+import org.apache.lucene.anaysis.lovins.LovinsFilterFactory;
 import org.apache.lucene.util.BytesRef;
+import smile.nlp.stemmer.LancasterStemmer;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -284,6 +287,18 @@ public class Analyzers {
                         .withTokenizer("standard")
                         .addTokenFilter("lowercase")
                         .addTokenFilter(SnowballPorterFilterFactory.class, "language", "English")
+                        .build();
+            case Lovins:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("lowercase")
+                        .addTokenFilter(LovinsFilterFactory.class)
+                        .build();
+            case Lancaster:
+                return CustomAnalyzer.builder()
+                        .withTokenizer("standard")
+                        .addTokenFilter("lowercase")
+                        .addTokenFilter(LancasterFilterFactory.class)
                         .build();
             /**
             * Brychcín, T., & Konopík, M. (2015). HPS: High precision stemmer. Information Processing & Management, 51(1), 68-91.

@@ -7,12 +7,15 @@ fi
 if [ -z "$1" ]; then
 	RUNS=runs
     EVALS=evals
+elif [ "$1" = "synonym_param" ]; then
+	RUNS=synonym_param_runs
+    EVALS=synonym_param_evals
 else
 	RUNS="$1_runs"
     EVALS="$1_evals"
 fi
 
-cut_off=(20 100)
+cut_off=(10 20 100)
 
 echo "starting evaluator with RUNS = $RUNS and EVALS = $EVALS ..."
 

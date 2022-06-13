@@ -74,8 +74,8 @@ public final class GdEval implements EvalTool {
     public String getMetric(InfoNeed need, Metric metric) {
 
         if (!elementList.containsKey(need.id())) {
-           /** if (202 == need.id() || 225 == need.id()) **/ return "0.00000";
-           // throw new RuntimeException("need : " + need + " cannot be found!");
+           ///** if (202 == need.id() || 225 == need.id()) **/ return "0.00000";
+            throw new RuntimeException("need : " + need + " cannot be found!");
         }
 
         Element element = elementList.get(need.id());

@@ -5,9 +5,9 @@ package edu.anadolu.analysis;
  */
 public enum Tag {
 
-    NoStem, KStem, ICU, Latin, Zemberek, NoStemTurkish, KStemField, Script, UAX, ASCII, SnowballTr,SnowballEng, Sstem, F5Stem,
+    NoStem, KStem, ICU, Latin, Zemberek, NoStemTurkish, KStemField, Script, UAX, ASCII, SnowballTr,Lovins,SynonymLovins,SnowballEng, Sstem, F5Stem,
     BoilerpipeArt, BoilerpipeLC, BoilerpipeDefault,CustomBoilerPipe,CustomBoilerPipeAndJsoup,CustomRemovalBoilerPipeAndJsoup,SynonymSnowballEng,SynonymKStem,
-    SynonymSnowballEngQBS,SynonymKStemQBS,SynonymKStemBERT,SynonymSnowballEngBERT, HPS,SynonymHPS,SynonymGupta19;
+    SynonymSnowballEngQBS,SynonymKStemQBS,SynonymKStemBERT,SynonymSnowballEngBERT, HPS,SynonymHPS,SynonymGupta19, Lancaster,SynonymLancaster;
 
     public static Tag tag(String indexTag) {
 

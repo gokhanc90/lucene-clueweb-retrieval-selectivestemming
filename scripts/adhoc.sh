@@ -7,6 +7,9 @@ fi
 if [ "$1" = "parameter" ]; then
 	RUNS=parameter_runs
     EVALS=parameter_evals
+elif [ "$1" = "synonym_param" ]; then
+	RUNS=synonym_param_runs
+    EVALS=synonym_param_evals
 else
 	RUNS=runs
     EVALS=evals

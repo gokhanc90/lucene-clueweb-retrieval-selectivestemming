@@ -1,20 +1,14 @@
 package edu.anadolu.cmdline;
 
 import edu.anadolu.QuerySelector;
-import edu.anadolu.Searcher;
 import edu.anadolu.analysis.Analyzers;
 import edu.anadolu.analysis.Tag;
 import edu.anadolu.datasets.Collection;
 import edu.anadolu.datasets.CollectionFactory;
 import edu.anadolu.datasets.DataSet;
-import edu.anadolu.eval.Evaluator;
-import edu.anadolu.eval.SystemEvaluator;
+import edu.anadolu.eval.*;
 import edu.anadolu.knn.Measure;
 import edu.anadolu.qpp.PMI;
-import edu.anadolu.similarities.DFIC;
-import edu.anadolu.similarities.DFRee;
-import edu.anadolu.similarities.DLH13;
-import edu.anadolu.similarities.DPH;
 import edu.anadolu.stats.TermStats;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.correlation.KendallsCorrelation;
@@ -26,14 +20,14 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.similarities.ModelBase;
-import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.spell.LuceneDictionary;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.clueweb09.InfoNeed;
 import org.clueweb09.tracks.Track;
 import org.kohsuke.args4j.Option;
@@ -236,6 +230,48 @@ public class AdHocExpTool extends CmdLineTool {
                 systemEvaluator.printBestCount();
             }
         }
+
+        if("printRunTopicFromEvals".equals(task)){
+            XSSFWorkbook workbook = new XSSFWorkbook();
+
+            int[] k_values = {10,20,100};
+            Metric[] metrics = {Metric.NDCG,Metric.ERR,Metric.MAP};
+            for(Metric metric:metrics) {
+                if (Metric.ERR.equals(metric) || Metric.NDCG.equals(metric)) {
+                    for (int k : k_values) {
+
+                        List<Path> paths = getPathList(dataset, tag, String.valueOf(k));
+                        TreeMap<String, ArrayList<String>> model_scores = mergeTopicScores(dataset, metric, k, paths);
+
+                        exportToExcelSheet(dataset, workbook, metric, k, model_scores);
+
+
+                    }
+                } else if ( Metric.P.equals(metric)) {
+                    for (int k : k_values) {
+                        List<Path> paths = getPathList(dataset, tag, "trec_eval");
+                        TreeMap<String, ArrayList<String>> model_scores = mergeTopicScores(dataset, metric, k, paths);
+
+                        exportToExcelSheet(dataset, workbook, metric, k, model_scores);
+
+                    }
+                }
+                else if (Metric.MAP.equals(metric) ) {
+                        List<Path> paths = getPathList(dataset, tag, "trec_eval");
+                        TreeMap<String, ArrayList<String>> model_scores = mergeTopicScores(dataset, metric, 1000, paths);
+
+                        exportToExcelSheet(dataset, workbook, metric, 1000, model_scores);
+
+
+                }
+            }
+
+            FileOutputStream out = new FileOutputStream(new File(collection+"_RunTopicResults.xlsx"));
+            workbook.write(out);
+            out.close();
+
+        }
+
 
         if("printSystemTopic".equals(task)){
             Measure[] measures = {Measure.MAP,Measure.NDCG20,Measure.NDCG100};
@@ -528,13 +564,14 @@ public class AdHocExpTool extends CmdLineTool {
                     }
                 }
             }
-
+            PrintWriter writer = new PrintWriter("Synonym_"+collection.name()+"_"+tag+".txt");
             for(Map.Entry<String,Set<String>> e :stemVariants.entrySet()){
                 if(e.getValue().size()==1) continue;
                 StringBuilder br = new StringBuilder();
                 String variantsPretty = e.getValue().stream().collect(Collectors.joining(",", "", ""));
                 br.append(variantsPretty);
                 System.out.println(br.toString());
+                writer.println(br.toString());
             }
 
 
@@ -611,6 +648,89 @@ public class AdHocExpTool extends CmdLineTool {
         }
 
     }
+
+    private void exportToExcelSheet(DataSet dataset, XSSFWorkbook workbook, Metric metric, int k, TreeMap<String, ArrayList<String>> model_scores) {
+        XSSFSheet sheet = workbook.createSheet(metric.toString() + k);
+        int sheetRow = 0;
+        XSSFRow row = sheet.createRow(sheetRow++);
+        row.createCell(0).setCellValue("TID");
+        for (int c = 0; c < dataset.getTopics().size(); c++)
+            row.createCell(c+1).setCellValue(dataset.getTopics().get(c).id());
+
+        for (Map.Entry<String, ArrayList<String>> e : model_scores.entrySet()) {
+            row = sheet.createRow(sheetRow++);
+            row.createCell(0).setCellValue(e.getKey());
+            for (int c = 0; c < e.getValue().size(); c++)
+                row.createCell(c+1).setCellValue(e.getValue().get(c));
+        }
+    }
+
+    private TreeMap<String, ArrayList<String>> mergeTopicScores(DataSet dataset, Metric metric, int k, List<Path> paths) throws IOException {
+        TreeMap<String, List<EvalTool>> model_TrackEvals = new TreeMap<>();
+        for (Path p : paths) {
+            EvalTool evalTool = toolFactory(p, dataset, metric, String.valueOf(k));
+            if (model_TrackEvals.containsKey(p.getFileName().toString())) {
+                List<EvalTool> l = model_TrackEvals.get(p.getFileName().toString());
+                l.add(evalTool);
+                model_TrackEvals.put(p.getFileName().toString(), l);
+            } else {
+                List<EvalTool> l = new ArrayList<>();
+                l.add(evalTool);
+                model_TrackEvals.put(p.getFileName().toString(), l);
+            }
+        }
+
+        TreeMap<String, ArrayList<String>> model_topicScores = new TreeMap<>();
+        for (Map.Entry<String, List<EvalTool>> e : model_TrackEvals.entrySet()) {
+            //System.out.println(e.getKey());
+            ArrayList<String> scores = new ArrayList<>();
+            for (InfoNeed need : dataset.getTopics()) {
+                String score;
+                for (EvalTool tool : e.getValue()) {
+                    try {
+                        score = tool.getMetric(need, metric);
+                        scores.add(score);
+                        //System.out.println(need.id() + " : " + tool.getMetric(need, metric));
+                    } catch (RuntimeException error) {
+
+                    }
+                }
+            }
+
+            model_topicScores.put(e.getKey(),scores);
+        }
+        return model_topicScores;
+    }
+
+    private List<Path> getPathList(DataSet dataset, String tag, String k) throws IOException {
+        ArrayList<Path> paths = new ArrayList<>();
+        for (Track t : dataset.tracks()) {
+            Path thePath = Paths.get(dataset.collectionPath().toString(), "synonym_param_evals", tag, t.toString(), k);
+
+            if (!Files.exists(thePath) || !Files.isDirectory(thePath) || !Files.isReadable(thePath))
+                throw new IllegalArgumentException(thePath + " does not exist or is not a directory.");
+
+            paths.addAll(Evaluator.discoverTextFiles(thePath, "OR" + "_all.txt")) ;
+
+        }
+        return paths;
+    }
+
+    private EvalTool toolFactory(Path path, DataSet dataSet,Metric metric, String k) throws IOException {
+        if (edu.anadolu.datasets.Collection.MQ07.equals(dataSet.collection()))
+            return new StatAP(path, Integer.valueOf(k));
+        if (edu.anadolu.datasets.Collection.MQ08.equals(dataSet.collection()))
+            return new StatAP(path, Integer.valueOf(k));
+        if (edu.anadolu.datasets.Collection.MQ09.equals(dataSet.collection()))
+            return new StatAP(path, Integer.valueOf(k));
+        else if (Metric.ERR.equals(metric) || Metric.NDCG.equals(metric))
+            return new GdEval(path);
+        else if (Metric.MAP.equals(metric) || Metric.P.equals(metric))
+            return new TrecEval(path, Integer.valueOf(k));
+        else
+            throw new AssertionError(this);
+    }
+
     public void printLexicon(DataSet dataSet,Tag tag) throws Exception {
         for (final Path indexPath : discoverIndexes(dataSet)) {
             String tagC = indexPath.getFileName().toString();

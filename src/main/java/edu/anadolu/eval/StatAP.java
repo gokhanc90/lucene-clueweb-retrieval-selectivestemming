@@ -106,7 +106,7 @@ public final class StatAP implements EvalTool {
 
     private final int k;
 
-    StatAP(Path path, int k) throws IOException {
+    public StatAP(Path path, int k) throws IOException {
 
         this.k = k;
         List<String> lines = Files.readAllLines(path, StandardCharsets.US_ASCII);

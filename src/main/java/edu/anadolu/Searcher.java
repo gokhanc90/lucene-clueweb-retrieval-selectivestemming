@@ -72,7 +72,7 @@ public class Searcher implements Closeable {
         public void run() {
             try {
                 if(synonymPath!=null) {
-                    if ("synonym_param".equals(runsPath)) {
+                    if ("synonym_param_runs".equals(runsPath)) {
                         QueryParser queryParser = new QueryParser(field, Analyzers.analyzer(synonymPath));
                         queryParser.setDefaultOperator(operator);
 
@@ -226,7 +226,7 @@ public class Searcher implements Closeable {
         PrintWriter out = new PrintWriter(Files.newBufferedWriter(path.resolve(runTag + ".txt"), StandardCharsets.US_ASCII));
 
 
-        QueryParser queryParser = new QueryParser(field, Analyzers.analyzer(analyzerTag,synonymPath));
+        QueryParser queryParser = new QueryParser(field, Analyzers.analyzer(synonymPath));
         queryParser.setDefaultOperator(operator);
 
         SynonymWeightFunctions func=null;
